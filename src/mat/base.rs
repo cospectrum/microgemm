@@ -15,17 +15,6 @@ pub struct MatBase<V, T> {
 }
 
 impl<V, T> MatBase<V, T> {
-    pub fn new(nrows: usize, ncols: usize, values: V, layout: impl AsRef<Layout>) -> Self {
-        let (row_stride, col_stride) = match *layout.as_ref() {
-            Layout::RowMajor => (ncols, 1),
-            Layout::ColumnMajor => (1, nrows),
-            Layout::General {
-                row_stride,
-                col_stride,
-            } => (row_stride, col_stride),
-        };
-        Self::from_parts(nrows, ncols, values, row_stride, col_stride)
-    }
     pub fn from_parts(
         nrows: usize,
         ncols: usize,
@@ -68,6 +57,23 @@ impl<V, T> MatBase<V, T>
 where
     V: AsRef<[T]>,
 {
+    pub fn new(nrows: usize, ncols: usize, values: V, layout: impl AsRef<Layout>) -> Self {
+        let (row_stride, col_stride) = match *layout.as_ref() {
+            Layout::RowMajor => {
+                assert_eq!(values.as_ref().len(), nrows * ncols);
+                (ncols, 1)
+            }
+            Layout::ColumnMajor => {
+                assert_eq!(values.as_ref().len(), nrows * ncols);
+                (1, nrows)
+            }
+            Layout::General {
+                row_stride,
+                col_stride,
+            } => (row_stride, col_stride),
+        };
+        Self::from_parts(nrows, ncols, values, row_stride, col_stride)
+    }
     pub fn as_slice(&self) -> &[T] {
         self.values.as_ref()
     }
@@ -80,6 +86,13 @@ where
 {
     pub fn get(&self, row: usize, col: usize) -> T {
         self.values.as_ref()[self.idx(row, col)]
+    }
+    pub fn get_or(&self, row: usize, col: usize, default: T) -> T {
+        if row < self.nrows && col < self.ncols {
+            self.get(row, col)
+        } else {
+            default
+        }
     }
 }
 

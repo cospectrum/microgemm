@@ -22,10 +22,6 @@ pub fn gemm_with_params<T>(
     let nc = block_sizes.nc;
     let kc = block_sizes.kc;
 
-    assert_eq!(m % mc, 0);
-    assert_eq!(k % kc, 0);
-    assert_eq!(n % nc, 0);
-
     let mr = block_sizes.mr;
     let nr = block_sizes.nr;
 
@@ -75,7 +71,7 @@ mod tests {
 
     #[rustfmt::skip]
     #[test]
-    fn fixed() {
+    fn fixed_even() {
         let alpha = 2;
         let beta = -3;
 
@@ -103,5 +99,78 @@ mod tests {
         let ker = naive_gemm;
         gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
+    }
+
+    #[test]
+    fn fixed_odd() {
+        let alpha = 2;
+        let beta = -3;
+
+        let m = 3;
+        let k = 5;
+        let n = 3;
+
+        let a = [1, 2, 3, 4, 5, 5, 6, 7, 8, 9, -3, -4, -5, -6, -7];
+        let b = [
+            9, 10, -11, 11, 12, -13, 13, 14, -15, 15, 16, -17, 17, 18, -19,
+        ];
+        let a = MatRef::new(m, k, &a, Layout::RowMajor);
+        let b = MatRef::new(k, n, &b, Layout::RowMajor);
+
+        let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
+        let mut expect = c.clone();
+        let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
+        let mut expect = MatMut::new(m, n, expect.as_mut(), Layout::RowMajor);
+
+        let block_sizes = BlockSizes {
+            mc: 2,
+            mr: 1,
+            kc: 2,
+            nc: 2,
+            nr: 1,
+        };
+        let ker = naive_gemm;
+
+        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        naive_gemm(alpha, &a, &b, beta, &mut expect);
+        assert_eq!(c.as_slice(), expect.as_slice());
+    }
+
+    #[test]
+    fn test_random() {
+        use rand::Rng;
+
+        let rng = &mut rand::thread_rng();
+        let distr = rand::distributions::Uniform::new(-30, 30);
+
+        let m = rng.gen_range(1..100);
+        let k = rng.gen_range(1..100);
+        let n = rng.gen_range(1..100);
+
+        let alpha = rng.gen_range(-10..10);
+        let beta = rng.gen_range(-10..10);
+
+        let a = rng.sample_iter(distr).take(m * k).collect::<Vec<i32>>();
+        let b = rng.sample_iter(distr).take(k * n).collect::<Vec<i32>>();
+        let mut c = rng.sample_iter(distr).take(m * n).collect::<Vec<i32>>();
+        let mut expect = c.clone();
+
+        let a = MatRef::new(m, k, &a, Layout::RowMajor);
+        let b = MatRef::new(k, n, &b, Layout::RowMajor);
+        let mut c = MatMut::new(m, n, &mut c, Layout::RowMajor);
+        let mut expect = MatMut::new(m, n, &mut expect, Layout::RowMajor);
+
+        let block_sizes = BlockSizes {
+            mc: 2,
+            mr: 1,
+            kc: 2,
+            nc: 2,
+            nr: 1,
+        };
+        let ker = naive_gemm;
+
+        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        naive_gemm(alpha, &a, &b, beta, &mut expect);
+        assert_eq!(expect.as_slice(), c.as_slice());
     }
 }
