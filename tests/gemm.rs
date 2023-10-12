@@ -1,8 +1,3 @@
-# microgemm
-
-## Getting started
-
-```rs
 use microgemm::{gemm_with_params, naive_gemm, BlockSizes, Layout, MatMut, MatRef};
 
 const BLOCK_SIZES: BlockSizes = BlockSizes {
@@ -12,25 +7,6 @@ const BLOCK_SIZES: BlockSizes = BlockSizes {
     nc: 8,
     nr: 2,
 };
-
-fn main() {
-    let m = 10;
-    let k = 20;
-    let n = 15;
-
-    let lhs = (0..m * k).map(|x| x as i32).collect::<Vec<_>>();
-    let rhs = (0..k * n).map(|x| x as i32).collect::<Vec<_>>();
-    let mut dst = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
-
-    let lhs = MatRef::new(m, k, &lhs, Layout::RowMajor);
-    let rhs = MatRef::new(k, n, &rhs, Layout::ColumnMajor);
-    let mut dst = MatMut::new(m, n, &mut dst, Layout::RowMajor);
-
-    let alpha = 3;
-    let beta = -2;
-    gemm_with_params(alpha, &lhs, &rhs, beta, &mut dst, microkernel, &BLOCK_SIZES);
-    dbg!(dst.as_slice());
-}
 
 fn microkernel(alpha: i32, a: &MatRef<i32>, b: &MatRef<i32>, beta: i32, c: &mut MatMut<i32>) {
     assert!(alpha == 3);
@@ -47,4 +23,24 @@ fn microkernel(alpha: i32, a: &MatRef<i32>, b: &MatRef<i32>, beta: i32, c: &mut 
 
     naive_gemm(alpha, a, b, beta, c);
 }
-```
+
+#[test]
+fn test_gemm() {
+    let m = 10;
+    let k = 20;
+    let n = 15;
+
+    let lhs = (0..m * k).map(|x| x as i32).collect::<Vec<_>>();
+    let rhs = (0..k * n).map(|x| x as i32).collect::<Vec<_>>();
+    let mut dst = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
+
+    let lhs = MatRef::new(m, k, &lhs, Layout::RowMajor);
+    let rhs = MatRef::new(k, n, &rhs, Layout::ColumnMajor);
+    let mut dst = MatMut::new(m, n, &mut dst, Layout::RowMajor);
+
+    let alpha = 3;
+    let beta = -2;
+
+    gemm_with_params(alpha, &lhs, &rhs, beta, &mut dst, microkernel, &BLOCK_SIZES);
+    dbg!(dst.as_slice());
+}

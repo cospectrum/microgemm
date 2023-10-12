@@ -65,9 +65,8 @@ pub fn gemm_with_params<T>(
 
 #[cfg(test)]
 mod tests {
-    use crate::{naive_gemm, Layout};
-
     use super::*;
+    use crate::{naive_gemm, Layout};
 
     #[rustfmt::skip]
     #[test]
@@ -101,6 +100,7 @@ mod tests {
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
     }
 
+    #[rustfmt::skip]
     #[test]
     fn fixed_odd() {
         let alpha = 2;
@@ -110,9 +110,17 @@ mod tests {
         let k = 5;
         let n = 3;
 
-        let a = [1, 2, 3, 4, 5, 5, 6, 7, 8, 9, -3, -4, -5, -6, -7];
+        let a = [
+            1, 2, 3, 4, 5,
+            5, 6, 7, 8, 9,
+            -3, -4, -5, -6, -7,
+        ];
         let b = [
-            9, 10, -11, 11, 12, -13, 13, 14, -15, 15, 16, -17, 17, 18, -19,
+            9, 10, -11,
+            11, 12, -13,
+            13, 14, -15,
+            15, 16, -17,
+            17, 18, -19,
         ];
         let a = MatRef::new(m, k, &a, Layout::RowMajor);
         let b = MatRef::new(k, n, &b, Layout::RowMajor);
@@ -137,7 +145,13 @@ mod tests {
     }
 
     #[test]
-    fn test_random() {
+    fn test_random_gemm() {
+        for _ in 0..10 {
+            random_gemm()
+        }
+    }
+
+    fn random_gemm() {
         use rand::Rng;
 
         let rng = &mut rand::thread_rng();
@@ -160,13 +174,13 @@ mod tests {
         let mut c = MatMut::new(m, n, &mut c, Layout::RowMajor);
         let mut expect = MatMut::new(m, n, &mut expect, Layout::RowMajor);
 
-        let block_sizes = BlockSizes {
-            mc: 2,
-            mr: 1,
-            kc: 2,
-            nc: 2,
-            nr: 1,
-        };
+        let mr = rng.gen_range(1..30);
+        let mc = rng.gen_range(1..6) * mr;
+        let nr = rng.gen_range(1..30);
+        let nc = rng.gen_range(1..6) * nr;
+        let kc = rng.gen_range(1..40);
+
+        let block_sizes = BlockSizes { mc, mr, kc, nc, nr };
         let ker = naive_gemm;
 
         gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);

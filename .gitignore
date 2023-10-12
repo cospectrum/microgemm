@@ -186,9 +186,10 @@ Cargo.lock
 !README.md
 !LICENSE
 !Cargo.toml
+
+!tests
+!examples
+!benches
 !src
 
 !microgemm
-
-!examples
-!benches
