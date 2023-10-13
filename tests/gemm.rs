@@ -42,7 +42,6 @@ fn test_gemm() {
 
     let mut buf = [-1; BLOCK_SIZES.buf_len()];
     gemm_with_params(
-        &mut buf,
         alpha,
         &lhs,
         &rhs,
@@ -50,6 +49,7 @@ fn test_gemm() {
         &mut dst,
         microkernel,
         &BLOCK_SIZES,
+        &mut buf,
     );
     println!("{:?}", dst.as_slice());
 

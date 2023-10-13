@@ -3,7 +3,6 @@ use num_traits::{One, Zero};
 
 #[allow(clippy::too_many_arguments)]
 pub fn gemm_with_params<T>(
-    buf: &mut [T],
     alpha: T,
     a: &MatRef<T>,
     b: &MatRef<T>,
@@ -11,6 +10,7 @@ pub fn gemm_with_params<T>(
     c: &mut MatMut<T>,
     mut microkernel: impl FnMut(T, &MatRef<T>, &MatRef<T>, T, &mut MatMut<T>),
     block_sizes: &BlockSizes,
+    buf: &mut [T],
 ) where
     T: Copy + Zero + One,
 {
@@ -98,7 +98,7 @@ mod tests {
         let mut buf = vec![-9; block_sizes.buf_len()];
         let ker = naive_gemm;
 
-        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
     }
 
@@ -142,7 +142,7 @@ mod tests {
         let mut buf = vec![-1; block_sizes.buf_len()];
         let ker = naive_gemm;
 
-        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(c.as_slice(), expect.as_slice());
     }
@@ -188,7 +188,7 @@ mod tests {
         let mut buf = vec![fill; block_sizes.buf_len()];
         let ker = naive_gemm;
 
-        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(expect.as_slice(), c.as_slice());
     }

@@ -31,13 +31,9 @@ fn main() {
 
     let alpha = 2;
     let beta = -3;
-
-    // buffer for storing intermediate calculations,
-    // can be initialized with arbitrary values
     let mut buf = [0; BLOCK_SIZES.buf_len()];
 
     gemm_with_params(
-        &mut buf,
         alpha,
         &lhs,
         &rhs,
@@ -45,6 +41,7 @@ fn main() {
         &mut dst,
         microkernel,
         &BLOCK_SIZES,
+        &mut buf,
     );
     println!("{:?}", dst.as_slice());
 }
