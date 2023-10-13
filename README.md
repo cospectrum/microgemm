@@ -1,9 +1,18 @@
 # microgemm
 
 Rust implementation of general matrix multiplication based on the BLIS microkernel
-approach with support for custom tuning.
+approach with custom configuration.
 
 ## Getting started
+
+```sh
+cargo add microgemm
+```
+
+### gemm_with_params
+
+You need to provide a microkernel, as well as block sizes and a buffer for
+intermediate results.
 
 ```rs
 use microgemm::{gemm_with_params, naive_gemm, BlockSizes, Layout, MatMut, MatRef};
@@ -33,6 +42,7 @@ fn main() {
     let beta = -3;
     let mut buf = [0; BLOCK_SIZES.buf_len()];
 
+    // dst <- alpha lhs rhs + beta dst
     gemm_with_params(
         alpha,
         &lhs,

@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_random_gemm() {
-        for _ in 0..10 {
+        for _ in 0..20 {
             random_gemm()
         }
     }
