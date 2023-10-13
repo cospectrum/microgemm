@@ -1,7 +1,9 @@
 use crate::{copy_to, pack_a, pack_b, pack_c, BlockSizes, MatMut, MatRef};
 use num_traits::{One, Zero};
 
+#[allow(clippy::too_many_arguments)]
 pub fn gemm_with_params<T>(
+    buf: &mut [T],
     alpha: T,
     a: &MatRef<T>,
     b: &MatRef<T>,
@@ -13,6 +15,8 @@ pub fn gemm_with_params<T>(
     T: Copy + Zero + One,
 {
     block_sizes.check();
+    let (a_buf, b_buf, c_buf) = block_sizes.split_buf(buf);
+
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
     assert_eq!(b.ncols(), c.ncols());
@@ -25,21 +29,17 @@ pub fn gemm_with_params<T>(
     let mr = block_sizes.mr;
     let nr = block_sizes.nr;
 
-    let mut b_buf = vec![T::zero(); kc * nc];
-    let mut a_buf = vec![T::zero(); mc * kc];
-    let mut c_buf = vec![T::zero(); mr * nr];
-
     let lhs = MatRef::from_parts(mr, kc, &[], kc, 1);
     let rhs = MatRef::from_parts(kc, nr, &[], 1, kc);
 
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let bp = pack_b(b, b_buf.as_mut(), pc..pc + kc, jc..jc + nc);
+            let bp = pack_b(b, b_buf, pc..pc + kc, jc..jc + nc);
             let bp = bp.to_ref();
 
             for ic in (0..m).step_by(mc) {
-                let ap = pack_a(a, a_buf.as_mut(), ic..ic + mc, pc..pc + kc);
+                let ap = pack_a(a, a_buf, ic..ic + mc, pc..pc + kc);
                 let ap = ap.to_ref();
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
@@ -53,7 +53,7 @@ pub fn gemm_with_params<T>(
                         let dst_rows = ic + ir..ic + ir + mr;
 
                         let mut dst =
-                            pack_c(&c.to_ref(), &mut c_buf, dst_rows.clone(), dst_cols.clone());
+                            pack_c(&c.to_ref(), c_buf, dst_rows.clone(), dst_cols.clone());
                         microkernel(alpha, &lhs, &rhs, beta, &mut dst);
                         copy_to(c, &dst.to_ref(), dst_rows, dst_cols.clone());
                     }
@@ -95,8 +95,10 @@ mod tests {
         let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
 
         let block_sizes = BlockSizes { mc: 2, mr: 1, kc: 2, nc: 2, nr: 1 };
+        let mut buf = vec![-9; block_sizes.buf_len()];
         let ker = naive_gemm;
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+
+        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
     }
 
@@ -137,9 +139,10 @@ mod tests {
             nc: 2,
             nr: 1,
         };
+        let mut buf = vec![-1; block_sizes.buf_len()];
         let ker = naive_gemm;
 
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(c.as_slice(), expect.as_slice());
     }
@@ -181,9 +184,11 @@ mod tests {
         let kc = rng.gen_range(1..40);
 
         let block_sizes = BlockSizes { mc, mr, kc, nc, nr };
+        let fill = rng.gen_range(-10..10);
+        let mut buf = vec![fill; block_sizes.buf_len()];
         let ker = naive_gemm;
 
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes);
+        gemm_with_params(&mut buf, alpha, &a, &b, beta, &mut c, ker, &block_sizes);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(expect.as_slice(), c.as_slice());
     }

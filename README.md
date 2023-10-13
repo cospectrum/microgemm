@@ -1,12 +1,15 @@
 # microgemm
 
+Rust implementation of general matrix multiplication based on the BLIS microkernel
+approach with support for custom tuning.
+
 ## Getting started
 
 ```rs
 use microgemm::{gemm_with_params, naive_gemm, BlockSizes, Layout, MatMut, MatRef};
 
 const BLOCK_SIZES: BlockSizes = BlockSizes {
-    mc: 9,
+    mc: 6,
     mr: 3,
     kc: 5,
     nc: 8,
@@ -26,16 +29,27 @@ fn main() {
     let rhs = MatRef::new(k, n, &rhs, Layout::ColumnMajor);
     let mut dst = MatMut::new(m, n, &mut dst, Layout::RowMajor);
 
-    let alpha = 3;
-    let beta = -2;
-    gemm_with_params(alpha, &lhs, &rhs, beta, &mut dst, microkernel, &BLOCK_SIZES);
-    dbg!(dst.as_slice());
+    let alpha = 2;
+    let beta = -3;
+
+    // buffer for storing intermediate calculations,
+    // can be initialized with arbitrary values
+    let mut buf = [0; BLOCK_SIZES.buf_len()];
+
+    gemm_with_params(
+        &mut buf,
+        alpha,
+        &lhs,
+        &rhs,
+        beta,
+        &mut dst,
+        microkernel,
+        &BLOCK_SIZES,
+    );
+    println!("{:?}", dst.as_slice());
 }
 
 fn microkernel(alpha: i32, a: &MatRef<i32>, b: &MatRef<i32>, beta: i32, c: &mut MatMut<i32>) {
-    assert!(alpha == 3);
-    assert!(beta == -2 || beta == 1);
-
     assert_eq!(a.nrows(), BLOCK_SIZES.mr);
     assert_eq!(a.ncols(), BLOCK_SIZES.kc);
 

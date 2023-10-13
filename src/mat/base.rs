@@ -87,7 +87,7 @@ where
     pub fn get(&self, row: usize, col: usize) -> T {
         self.values.as_ref()[self.idx(row, col)]
     }
-    pub fn get_or(&self, row: usize, col: usize, default: T) -> T {
+    pub(crate) fn get_or(&self, row: usize, col: usize, default: T) -> T {
         if row < self.nrows && col < self.ncols {
             self.get(row, col)
         } else {
