@@ -30,18 +30,16 @@ impl Kernel<i32> for CustomKernel {
         assert_eq!(lhs.nrows(), Self::MR);
         assert_eq!(rhs.ncols(), Self::NR);
         assert!(dst.nrows() == Self::MR && dst.ncols() == Self::NR);
-
         naive_gemm(alpha, lhs, rhs, beta, dst);
     }
 }
 
 const PACK_SIZES: PackSizes = PackSizes {
-    mc: 6,
+    mc: 6, // must be divisible by MR
     kc: 5,
-    nc: 8,
+    nc: 8, // must be divisible by NR
 };
 
-#[test]
 fn main() {
     let kernel = CustomKernel;
     let m = 10;

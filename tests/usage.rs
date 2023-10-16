@@ -23,9 +23,9 @@ impl Kernel<i32> for CustomKernel {
 }
 
 const PACK_SIZES: PackSizes = PackSizes {
-    mc: 6,
+    mc: 6, // must be divisible by MR
     kc: 5,
-    nc: 8,
+    nc: 8, // must be divisible by NR
 };
 
 #[test]
