@@ -2,14 +2,10 @@ mod base;
 
 pub use base::{MatMut, MatRef};
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Layout {
     RowMajor,
     ColumnMajor,
-    General {
-        row_stride: usize,
-        col_stride: usize,
-    },
 }
 
 impl AsRef<Layout> for Layout {

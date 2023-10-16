@@ -1,61 +1,64 @@
-use crate::{copy_to, pack_a, pack_b, pack_c, BlockSizes, MatMut, MatRef};
+use crate::{Kernel, MatMut, MatRef, PackSizes};
 use num_traits::{One, Zero};
 
 #[allow(clippy::too_many_arguments)]
-pub fn gemm_with_params<T>(
+pub fn gemm_with_kernel<T, K>(
+    kernel: &K,
     alpha: T,
     a: &MatRef<T>,
     b: &MatRef<T>,
     beta: T,
     c: &mut MatMut<T>,
-    mut microkernel: impl FnMut(T, &MatRef<T>, &MatRef<T>, T, &mut MatMut<T>),
-    block_sizes: &BlockSizes,
+    pack_sizes: &PackSizes,
     buf: &mut [T],
 ) where
     T: Copy + Zero + One,
+    K: Kernel<T>,
 {
-    block_sizes.check();
-    let (a_buf, b_buf, c_buf) = block_sizes.split_buf(buf);
+    pack_sizes.check(kernel);
+    assert_eq!(pack_sizes.buf_len::<T, K>(), buf.len());
+    let (a_buf, b_buf, dst_buf) = pack_sizes.split_buf(buf);
 
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
     assert_eq!(b.ncols(), c.ncols());
-
     let (m, k, n) = (a.nrows(), a.ncols(), c.ncols());
-    let mc = block_sizes.mc;
-    let nc = block_sizes.nc;
-    let kc = block_sizes.kc;
 
-    let mr = block_sizes.mr;
-    let nr = block_sizes.nr;
+    let mc = pack_sizes.mc;
+    let nc = pack_sizes.nc;
+    let kc = pack_sizes.kc;
 
-    let lhs = MatRef::from_parts(mr, kc, &[], kc, 1);
-    let rhs = MatRef::from_parts(kc, nr, &[], 1, kc);
+    let mr = K::MR;
+    let nr = K::NR;
 
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let bp = pack_b(b, b_buf, pc..pc + kc, jc..jc + nc);
-            let bp = bp.to_ref();
+            let rhs_layout = kernel.pack_b(pack_sizes, b_buf, b, pc..pc + kc, jc..jc + nc);
 
             for ic in (0..m).step_by(mc) {
-                let ap = pack_a(a, a_buf, ic..ic + mc, pc..pc + kc);
-                let ap = ap.to_ref();
+                let lhs_layout = kernel.pack_a(pack_sizes, a_buf, a, ic..ic + mc, pc..pc + kc);
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
-                    let rhs_vals = &bp.as_slice()[kc * nr * l2..kc * nr * (l2 + 1)];
-                    let rhs = rhs.with_values(rhs_vals);
+                    let rhs_values = &b_buf[kc * nr * l2..kc * nr * (l2 + 1)];
+                    let rhs = MatRef::new(kc, nr, rhs_values, rhs_layout);
+
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
-                        let lhs_vals = &ap.as_slice()[kc * mr * l1..kc * mr * (l1 + 1)];
-                        let lhs = lhs.with_values(lhs_vals);
+                        let lhs_values = &a_buf[kc * mr * l1..kc * mr * (l1 + 1)];
+                        let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
+
                         let dst_rows = ic + ir..ic + ir + mr;
 
-                        let mut dst =
-                            pack_c(&c.to_ref(), c_buf, dst_rows.clone(), dst_cols.clone());
-                        microkernel(alpha, &lhs, &rhs, beta, &mut dst);
-                        copy_to(c, &dst.to_ref(), dst_rows, dst_cols.clone());
+                        let mut dst = kernel.copy_from_c(
+                            &c.to_ref(),
+                            dst_rows.clone(),
+                            dst_cols.clone(),
+                            dst_buf,
+                        );
+                        kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
+                        kernel.copy_to_c(c, dst_rows, dst_cols.clone(), &dst.to_ref());
                     }
                 }
             }
@@ -68,9 +71,29 @@ mod tests {
     use super::*;
     use crate::{naive_gemm, Layout};
 
+    struct TestKernel;
+
+    impl Kernel<i32> for TestKernel {
+        const MR: usize = 5;
+        const NR: usize = 5;
+
+        fn microkernel(
+            &self,
+            alpha: i32,
+            lhs: &MatRef<i32>,
+            rhs: &MatRef<i32>,
+            beta: i32,
+            dst: &mut MatMut<i32>,
+        ) {
+            naive_gemm(alpha, lhs, rhs, beta, dst);
+        }
+    }
+
     #[rustfmt::skip]
     #[test]
     fn fixed_even() {
+        let kernel = &TestKernel;
+
         let alpha = 2;
         let beta = -3;
 
@@ -94,17 +117,18 @@ mod tests {
         let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
         let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
 
-        let block_sizes = BlockSizes { mc: 2, mr: 1, kc: 2, nc: 2, nr: 1 };
-        let mut buf = vec![-9; block_sizes.buf_len()];
-        let ker = naive_gemm;
+        let pack_sizes = PackSizes { mc: TestKernel::MR,  kc: 2, nc: TestKernel::NR };
+        let mut buf = vec![-9; pack_sizes.buf_len::<i32, TestKernel>()];
 
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
+        gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
     }
 
     #[rustfmt::skip]
     #[test]
     fn fixed_odd() {
+        let kernel = &TestKernel;
+
         let alpha = 2;
         let beta = -3;
 
@@ -132,17 +156,14 @@ mod tests {
         let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
         let mut expect = MatMut::new(m, n, expect.as_mut(), Layout::RowMajor);
 
-        let block_sizes = BlockSizes {
-            mc: 2,
-            mr: 1,
+        let pack_sizes = PackSizes {
+            mc: TestKernel::MR,
             kc: 2,
-            nc: 2,
-            nr: 1,
+            nc: TestKernel::NR,
         };
-        let mut buf = vec![-1; block_sizes.buf_len()];
-        let ker = naive_gemm;
+        let mut buf = vec![-1; pack_sizes.buf_len::<i32, TestKernel>()];
 
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
+        gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(c.as_slice(), expect.as_slice());
     }
@@ -157,6 +178,7 @@ mod tests {
     fn random_gemm() {
         use rand::Rng;
 
+        let kernel = &TestKernel;
         let rng = &mut rand::thread_rng();
         let distr = rand::distributions::Uniform::new(-30, 30);
 
@@ -177,18 +199,15 @@ mod tests {
         let mut c = MatMut::new(m, n, &mut c, Layout::RowMajor);
         let mut expect = MatMut::new(m, n, &mut expect, Layout::RowMajor);
 
-        let mr = rng.gen_range(1..30);
-        let mc = rng.gen_range(1..6) * mr;
-        let nr = rng.gen_range(1..30);
-        let nc = rng.gen_range(1..6) * nr;
+        let mc = rng.gen_range(1..6) * TestKernel::MR;
+        let nc = rng.gen_range(1..6) * TestKernel::NR;
         let kc = rng.gen_range(1..40);
+        let pack_sizes = PackSizes { mc, kc, nc };
 
-        let block_sizes = BlockSizes { mc, mr, kc, nc, nr };
         let fill = rng.gen_range(-10..10);
-        let mut buf = vec![fill; block_sizes.buf_len()];
-        let ker = naive_gemm;
+        let mut buf = vec![fill; pack_sizes.buf_len::<i32, TestKernel>()];
 
-        gemm_with_params(alpha, &a, &b, beta, &mut c, ker, &block_sizes, &mut buf);
+        gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
         assert_eq!(expect.as_slice(), c.as_slice());
     }

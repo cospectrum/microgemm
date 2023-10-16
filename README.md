@@ -1,7 +1,6 @@
 # microgemm
 
-Rust implementation of general matrix multiplication based on the BLIS microkernel
-approach with custom configuration.
+General matrix multiplication with custom configuration in Rust.
 
 ## Getting started
 
@@ -9,7 +8,7 @@ approach with custom configuration.
 cargo add microgemm
 ```
 
-### gemm_with_params
+### Usage
 
 You need to provide a microkernel, as well as block sizes and a buffer for
 intermediate results.
@@ -30,42 +29,42 @@ fn main() {
     let k = 20;
     let n = 15;
 
-    let lhs = (0..m * k).map(|x| x as i32).collect::<Vec<_>>();
-    let rhs = (0..k * n).map(|x| x as i32).collect::<Vec<_>>();
-    let mut dst = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
+    let a = (0..m * k).map(|x| x as i32).collect::<Vec<_>>();
+    let b = (0..k * n).map(|x| x as i32).collect::<Vec<_>>();
+    let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
 
-    let lhs = MatRef::new(m, k, &lhs, Layout::RowMajor);
-    let rhs = MatRef::new(k, n, &rhs, Layout::ColumnMajor);
-    let mut dst = MatMut::new(m, n, &mut dst, Layout::RowMajor);
+    let a = MatRef::new(m, k, &a, Layout::RowMajor);
+    let b = MatRef::new(k, n, &b, Layout::ColumnMajor);
+    let mut c = MatMut::new(m, n, &mut c, Layout::RowMajor);
 
     let alpha = 2;
     let beta = -3;
     let mut buf = [0; BLOCK_SIZES.buf_len()];
 
-    // dst <- alpha lhs rhs + beta dst
+    // c <- alpha a b + beta c
     gemm_with_params(
         alpha,
-        &lhs,
-        &rhs,
+        &a,
+        &b,
         beta,
-        &mut dst,
+        &mut c,
         microkernel,
         &BLOCK_SIZES,
         &mut buf,
     );
-    println!("{:?}", dst.as_slice());
+    println!("{:?}", c.as_slice());
 }
 
-fn microkernel(alpha: i32, a: &MatRef<i32>, b: &MatRef<i32>, beta: i32, c: &mut MatMut<i32>) {
-    assert_eq!(a.nrows(), BLOCK_SIZES.mr);
-    assert_eq!(a.ncols(), BLOCK_SIZES.kc);
+fn microkernel(alpha: i32, lhs: &MatRef<i32>, rhs: &MatRef<i32>, beta: i32, dst: &mut MatMut<i32>) {
+    assert_eq!(lhs.nrows(), BLOCK_SIZES.mr);
+    assert_eq!(lhs.ncols(), BLOCK_SIZES.kc);
 
-    assert_eq!(b.nrows(), BLOCK_SIZES.kc);
-    assert_eq!(b.ncols(), BLOCK_SIZES.nr);
+    assert_eq!(rhs.nrows(), BLOCK_SIZES.kc);
+    assert_eq!(rhs.ncols(), BLOCK_SIZES.nr);
 
-    assert_eq!(c.nrows(), BLOCK_SIZES.mr);
-    assert_eq!(c.ncols(), BLOCK_SIZES.nr);
+    assert_eq!(dst.nrows(), BLOCK_SIZES.mr);
+    assert_eq!(dst.ncols(), BLOCK_SIZES.nr);
 
-    naive_gemm(alpha, a, b, beta, c);
+    naive_gemm(alpha, lhs, rhs, beta, dst);
 }
 ```

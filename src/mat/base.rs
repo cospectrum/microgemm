@@ -1,5 +1,6 @@
 use crate::Layout;
 use core::marker::PhantomData;
+use num_traits::Zero;
 
 pub type MatRef<'a, T> = MatBase<&'a [T], T>;
 pub type MatMut<'a, T> = MatBase<&'a mut [T], T>;
@@ -51,26 +52,26 @@ impl<V, T> MatBase<V, T> {
         debug_assert!(col < self.ncols);
         row * self.row_stride + col * self.col_stride
     }
+    pub(crate) fn is_row_major(&self) -> bool {
+        !self.is_col_major()
+    }
+    pub(crate) fn is_col_major(&self) -> bool {
+        self.row_stride < self.col_stride
+    }
 }
 
 impl<V, T> MatBase<V, T>
 where
     V: AsRef<[T]>,
 {
-    pub fn new(nrows: usize, ncols: usize, values: V, layout: impl AsRef<Layout>) -> Self {
-        let (row_stride, col_stride) = match *layout.as_ref() {
-            Layout::RowMajor => {
-                assert_eq!(values.as_ref().len(), nrows * ncols);
-                (ncols, 1)
-            }
-            Layout::ColumnMajor => {
-                assert_eq!(values.as_ref().len(), nrows * ncols);
-                (1, nrows)
-            }
-            Layout::General {
-                row_stride,
-                col_stride,
-            } => (row_stride, col_stride),
+    pub fn new(nrows: usize, ncols: usize, values: V, layout: Layout) -> Self {
+        assert_eq!(values.as_ref().len(), nrows * ncols);
+        Self::new_unchecked(nrows, ncols, values, layout)
+    }
+    pub(crate) fn new_unchecked(nrows: usize, ncols: usize, values: V, layout: Layout) -> Self {
+        let (row_stride, col_stride) = match layout {
+            Layout::RowMajor => (ncols, 1),
+            Layout::ColumnMajor => (1, nrows),
         };
         Self::from_parts(nrows, ncols, values, row_stride, col_stride)
     }
@@ -87,11 +88,25 @@ where
     pub fn get(&self, row: usize, col: usize) -> T {
         self.values.as_ref()[self.idx(row, col)]
     }
-    pub(crate) fn get_or(&self, row: usize, col: usize, default: T) -> T {
+    pub fn get_or(&self, row: usize, col: usize, default: T) -> T {
         if row < self.nrows && col < self.ncols {
             self.get(row, col)
         } else {
             default
+        }
+    }
+}
+
+impl<V, T> MatBase<V, T>
+where
+    V: AsRef<[T]>,
+    T: Copy + Zero,
+{
+    pub fn get_or_zero(&self, row: usize, col: usize) -> T {
+        if row < self.nrows && col < self.ncols {
+            self.get(row, col)
+        } else {
+            T::zero()
         }
     }
 }
