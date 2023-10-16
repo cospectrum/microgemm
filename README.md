@@ -8,23 +8,42 @@ General matrix multiplication with custom configuration in Rust.
 cargo add microgemm
 ```
 
-### Usage
-
-You need to provide a microkernel, as well as block sizes and a buffer for
-intermediate results.
+### Custom Kernel
 
 ```rs
-use microgemm::{gemm_with_params, naive_gemm, BlockSizes, Layout, MatMut, MatRef};
+use microgemm::{naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 
-const BLOCK_SIZES: BlockSizes = BlockSizes {
+struct CustomKernel;
+
+impl Kernel<i32> for CustomKernel {
+    const MR: usize = 3;
+    const NR: usize = 2;
+
+    fn microkernel(
+        &self,
+        alpha: i32,
+        lhs: &MatRef<i32>,
+        rhs: &MatRef<i32>,
+        beta: i32,
+        dst: &mut MatMut<i32>,
+    ) {
+        assert_eq!(lhs.nrows(), Self::MR);
+        assert_eq!(rhs.ncols(), Self::NR);
+        assert!(dst.nrows() == Self::MR && dst.ncols() == Self::NR);
+
+        naive_gemm(alpha, lhs, rhs, beta, dst);
+    }
+}
+
+const PACK_SIZES: PackSizes = PackSizes {
     mc: 6,
-    mr: 3,
     kc: 5,
     nc: 8,
-    nr: 2,
 };
 
+#[test]
 fn main() {
+    let kernel = CustomKernel;
     let m = 10;
     let k = 20;
     let n = 15;
@@ -37,34 +56,13 @@ fn main() {
     let b = MatRef::new(k, n, &b, Layout::ColumnMajor);
     let mut c = MatMut::new(m, n, &mut c, Layout::RowMajor);
 
+    let mut buf = [0; PACK_SIZES.buf_len::<i32, CustomKernel>()];
+
     let alpha = 2;
     let beta = -3;
-    let mut buf = [0; BLOCK_SIZES.buf_len()];
 
     // c <- alpha a b + beta c
-    gemm_with_params(
-        alpha,
-        &a,
-        &b,
-        beta,
-        &mut c,
-        microkernel,
-        &BLOCK_SIZES,
-        &mut buf,
-    );
+    kernel.gemm(alpha, &a, &b, beta, &mut c, &PACK_SIZES, &mut buf);
     println!("{:?}", c.as_slice());
-}
-
-fn microkernel(alpha: i32, lhs: &MatRef<i32>, rhs: &MatRef<i32>, beta: i32, dst: &mut MatMut<i32>) {
-    assert_eq!(lhs.nrows(), BLOCK_SIZES.mr);
-    assert_eq!(lhs.ncols(), BLOCK_SIZES.kc);
-
-    assert_eq!(rhs.nrows(), BLOCK_SIZES.kc);
-    assert_eq!(rhs.ncols(), BLOCK_SIZES.nr);
-
-    assert_eq!(dst.nrows(), BLOCK_SIZES.mr);
-    assert_eq!(dst.ncols(), BLOCK_SIZES.nr);
-
-    naive_gemm(alpha, lhs, rhs, beta, dst);
 }
 ```
