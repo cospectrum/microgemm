@@ -5,6 +5,7 @@ mod mat;
 pub(crate) mod copying;
 pub(crate) mod packing;
 
+pub mod kernels;
 pub mod utils;
 
 pub use gemm::gemm_with_kernel;

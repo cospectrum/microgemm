@@ -11,7 +11,6 @@ const PACK_SIZES: PackSizes = PackSizes {
 #[test]
 fn main() {
     let kernel = CustomKernel;
-
     let mut buf = [0; PACK_SIZES.buf_len::<i64, CustomKernel>()];
 
     let m = 10;
