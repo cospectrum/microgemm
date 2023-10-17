@@ -1,16 +1,15 @@
-mod copying;
 mod gemm;
 mod kernel;
 mod mat;
-mod naive;
-mod packing;
 
-pub(crate) use copying::*;
+pub(crate) mod copying;
+pub(crate) mod packing;
 
-pub use gemm::*;
+pub mod utils;
+
+pub use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
 pub use mat::*;
-pub use naive::naive_gemm;
-pub use packing::{col_major_block, row_major_block, PackSizes};
+pub use packing::PackSizes;
 
 pub use num_traits::{One, Zero};

@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use microgemm::{naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
+use microgemm::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 
 const MC: usize = 256;
 const KC: usize = 4096;

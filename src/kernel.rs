@@ -1,6 +1,4 @@
-use crate::{
-    col_major_block, gemm_with_kernel, row_major_block, Layout, MatMut, MatRef, PackSizes,
-};
+use crate::{gemm_with_kernel, Layout, MatMut, MatRef, PackSizes};
 use core::ops::Range;
 use num_traits::{One, Zero};
 
@@ -16,25 +14,25 @@ where
 
     fn pack_a(
         &self,
-        _: &PackSizes,
+        pack_sizes: &PackSizes,
         apack: &mut [T],
         a: &MatRef<T>,
         a_rows: Range<usize>,
         a_cols: Range<usize>,
     ) -> Layout {
-        row_major_block(apack, a, a_rows, a_cols);
-        Layout::RowMajor
+        crate::packing::pack_a::<T, Self>(pack_sizes, apack, a, a_rows, a_cols);
+        Layout::ColumnMajor
     }
     fn pack_b(
         &self,
-        _: &PackSizes,
+        pack_sizes: &PackSizes,
         bpack: &mut [T],
         b: &MatRef<T>,
         b_rows: Range<usize>,
         b_cols: Range<usize>,
     ) -> Layout {
-        col_major_block(bpack, b, b_rows, b_cols);
-        Layout::ColumnMajor
+        crate::packing::pack_b::<T, Self>(pack_sizes, bpack, b, b_rows, b_cols);
+        Layout::RowMajor
     }
     fn copy_from_c<'dst>(
         &self,
@@ -43,7 +41,7 @@ where
         c_cols: Range<usize>,
         to: &'dst mut [T],
     ) -> MatMut<'dst, T> {
-        let dst = col_major_block(to, c, c_rows, c_cols);
+        let dst = crate::packing::col_major_block(to, c, c_rows, c_cols);
         dst
     }
     fn copy_to_c(
@@ -53,7 +51,7 @@ where
         c_cols: Range<usize>,
         from: &MatRef<T>,
     ) {
-        crate::copy(from, c, c_rows, c_cols);
+        crate::copying::copy(from, c, c_rows, c_cols);
     }
     #[allow(clippy::too_many_arguments)]
     fn gemm(

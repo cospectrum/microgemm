@@ -31,13 +31,13 @@ impl PackSizes {
         assert_eq!(self.mc % mr, 0);
         assert_eq!(self.nc % nr, 0);
     }
-    pub(crate) fn split_buf<'a, T>(
+    pub(crate) fn split_buf<'buf, T>(
         &self,
-        buf: &'a mut [T],
-    ) -> (&'a mut [T], &'a mut [T], &'a mut [T]) {
-        let (a_buf, tail) = buf.split_at_mut(self.mc * self.kc);
-        let (b_buf, c_buf) = tail.split_at_mut(self.kc * self.nc);
-        (a_buf, b_buf, c_buf)
+        buf: &'buf mut [T],
+    ) -> (&'buf mut [T], &'buf mut [T], &'buf mut [T]) {
+        let (apack, tail) = buf.split_at_mut(self.mc * self.kc);
+        let (bpack, dst_buf) = tail.split_at_mut(self.kc * self.nc);
+        (apack, bpack, dst_buf)
     }
 }
 
@@ -47,7 +47,59 @@ impl AsRef<PackSizes> for PackSizes {
     }
 }
 
-pub fn row_major_block<'block, T>(
+pub(crate) fn pack_a<T, K>(
+    pack_sizes: &PackSizes,
+    apack: &mut [T],
+    a: &MatRef<T>,
+    a_rows: Range<usize>,
+    a_cols: Range<usize>,
+) where
+    T: One + Zero + Copy,
+    K: Kernel<T>,
+{
+    let mc = pack_sizes.mc;
+    let kc = pack_sizes.kc;
+    let mr = K::MR;
+    debug_assert_eq!(a_rows.len(), mc);
+    debug_assert_eq!(a_cols.len(), kc);
+    debug_assert_eq!(apack.len(), mc * kc);
+    debug_assert_eq!(mc % mr, 0);
+
+    let start = a_rows.start;
+    for i in 0..mc / mr {
+        let buf = &mut apack[mr * kc * i..mr * kc * (i + 1)];
+        let rows = start + mr * i..start + mr * (i + 1);
+        col_major_block(buf, a, rows, a_cols.clone());
+    }
+}
+
+pub(crate) fn pack_b<T, K>(
+    pack_sizes: &PackSizes,
+    bpack: &mut [T],
+    b: &MatRef<T>,
+    b_rows: Range<usize>,
+    b_cols: Range<usize>,
+) where
+    T: One + Zero + Copy,
+    K: Kernel<T>,
+{
+    let kc = pack_sizes.kc;
+    let nc = pack_sizes.nc;
+    let nr = K::NR;
+    debug_assert_eq!(b_rows.len(), kc);
+    debug_assert_eq!(b_cols.len(), nc);
+    debug_assert_eq!(bpack.len(), kc * nc);
+    debug_assert_eq!(nc % nr, 0);
+
+    let start = b_cols.start;
+    for i in 0..nc / nr {
+        let buf = &mut bpack[kc * nr * i..kc * nr * (i + 1)];
+        let cols = start + nr * i..start + nr * (i + 1);
+        row_major_block(buf, b, b_rows.clone(), cols);
+    }
+}
+
+pub(crate) fn row_major_block<'block, T>(
     block_buf: &'block mut [T],
     from: &MatRef<T>,
     rows: Range<usize>,
@@ -69,7 +121,7 @@ where
     block
 }
 
-pub fn col_major_block<'block, T>(
+pub(crate) fn col_major_block<'block, T>(
     block_buf: &'block mut [T],
     from: &MatRef<T>,
     rows: Range<usize>,

@@ -1,16 +1,3 @@
-# microgemm
-
-General matrix multiplication with custom configuration in Rust.
-
-## Getting started
-
-```sh
-cargo add microgemm
-```
-
-### Custom Kernel
-
-```rs
 use microgemm::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 
 struct CustomKernel;
@@ -21,6 +8,7 @@ const PACK_SIZES: PackSizes = PackSizes {
     nc: 3 * CustomKernel::NR, // must be divisible by NR
 };
 
+#[test]
 fn main() {
     let kernel = CustomKernel;
 
@@ -45,7 +33,6 @@ fn main() {
 
     // c <- alpha a b + beta c
     kernel.gemm(alpha, &a, &b, beta, &mut c, &PACK_SIZES, &mut buf);
-
     naive_gemm(alpha, &a, &b, beta, &mut expect);
     assert_eq!(c.as_slice(), expect.as_slice());
 }
@@ -69,8 +56,8 @@ impl Kernel<i64> for CustomKernel {
         assert_eq!(dst.nrows(), Self::MR);
         assert_eq!(dst.ncols(), Self::NR);
 
-        assert_eq!(lhs.row_stride(), 1);  // lhs is column-major by default
-        assert_eq!(rhs.col_stride(), 1);  // rhs is row-major by default
+        assert_eq!(lhs.row_stride(), 1); // lhs is column-major by default
+        assert_eq!(rhs.col_stride(), 1); // rhs is row-major by default
 
         let left = lhs.as_slice().chunks_exact(2);
         let right = rhs.as_slice().chunks_exact(2);
@@ -98,4 +85,3 @@ impl Kernel<i64> for CustomKernel {
         *c11 = alpha * col1[1] + beta * *c11;
     }
 }
-```

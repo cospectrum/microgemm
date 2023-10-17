@@ -17,7 +17,7 @@ pub fn gemm_with_kernel<T, K>(
 {
     pack_sizes.check(kernel);
     assert_eq!(pack_sizes.buf_len::<T, K>(), buf.len());
-    let (a_buf, b_buf, dst_buf) = pack_sizes.split_buf(buf);
+    let (apack, bpack, dst_buf) = pack_sizes.split_buf(buf);
 
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
@@ -34,19 +34,19 @@ pub fn gemm_with_kernel<T, K>(
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let rhs_layout = kernel.pack_b(pack_sizes, b_buf, b, pc..pc + kc, jc..jc + nc);
+            let rhs_layout = kernel.pack_b(pack_sizes, bpack, b, pc..pc + kc, jc..jc + nc);
 
             for ic in (0..m).step_by(mc) {
-                let lhs_layout = kernel.pack_a(pack_sizes, a_buf, a, ic..ic + mc, pc..pc + kc);
+                let lhs_layout = kernel.pack_a(pack_sizes, apack, a, ic..ic + mc, pc..pc + kc);
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
-                    let rhs_values = &b_buf[kc * nr * l2..kc * nr * (l2 + 1)];
+                    let rhs_values = &bpack[kc * nr * l2..kc * nr * (l2 + 1)];
                     let rhs = MatRef::new(kc, nr, rhs_values, rhs_layout);
 
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
-                        let lhs_values = &a_buf[kc * mr * l1..kc * mr * (l1 + 1)];
+                        let lhs_values = &apack[kc * mr * l1..kc * mr * (l1 + 1)];
                         let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
 
                         let dst_rows = ic + ir..ic + ir + mr;
@@ -69,7 +69,7 @@ pub fn gemm_with_kernel<T, K>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{naive_gemm, Layout};
+    use crate::{utils::naive_gemm, Layout};
 
     struct TestKernel;
 
@@ -85,13 +85,17 @@ mod tests {
             beta: i32,
             dst: &mut MatMut<i32>,
         ) {
+            assert_eq!(lhs.nrows(), Self::MR);
+            assert_eq!(rhs.ncols(), Self::NR);
+            assert_eq!(dst.nrows(), Self::MR);
+            assert_eq!(dst.ncols(), Self::NR);
             naive_gemm(alpha, lhs, rhs, beta, dst);
         }
     }
 
     #[rustfmt::skip]
     #[test]
-    fn fixed_even() {
+    fn gemm_fixed_even() {
         let kernel = &TestKernel;
 
         let alpha = 2;
@@ -117,7 +121,7 @@ mod tests {
         let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
         let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
 
-        let pack_sizes = PackSizes { mc: TestKernel::MR,  kc: 2, nc: TestKernel::NR };
+        let pack_sizes = PackSizes { mc: 5 * TestKernel::MR,  kc: 2, nc: 2 * TestKernel::NR };
         let mut buf = vec![-9; pack_sizes.buf_len::<i32, TestKernel>()];
 
         gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
@@ -126,11 +130,8 @@ mod tests {
 
     #[rustfmt::skip]
     #[test]
-    fn fixed_odd() {
+    fn gemm_fixed_odd() {
         let kernel = &TestKernel;
-
-        let alpha = 2;
-        let beta = -3;
 
         let m = 3;
         let k = 5;
@@ -157,11 +158,14 @@ mod tests {
         let mut expect = MatMut::new(m, n, expect.as_mut(), Layout::RowMajor);
 
         let pack_sizes = PackSizes {
-            mc: TestKernel::MR,
+            mc: 2 * TestKernel::MR,
             kc: 2,
-            nc: TestKernel::NR,
+            nc: 3 * TestKernel::NR,
         };
         let mut buf = vec![-1; pack_sizes.buf_len::<i32, TestKernel>()];
+
+        let alpha = 2;
+        let beta = -3;
 
         gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
         naive_gemm(alpha, &a, &b, beta, &mut expect);
