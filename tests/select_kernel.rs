@@ -6,20 +6,20 @@ fn main() {
     let kernel = mg::select_kernel::<f32>();
 
     let pack_sizes = mg::PackSizes {
-        mc: 4 * kernel.mr(), // MC must be divisible by MR
-        kc: 8,
-        nc: 2 * kernel.nr(), // NC must be divisible by NR
+        mc: 10 * kernel.mr(), // MC must be divisible by MR
+        kc: 280,
+        nc: 20 * kernel.nr(), // NC must be divisible by NR
     };
     let buf_len = pack_sizes.buf_len(&kernel);
     let mut buf = vec![0.0; buf_len];
 
-    let m = 10;
-    let k = 16;
-    let n = 15;
+    let m = 100;
+    let k = 360;
+    let n = 250;
 
-    let a = vec![1.0; m * k];
-    let b = vec![2.0; k * n];
-    let mut c = vec![3.0; m * n];
+    let a = vec![2.0; m * k];
+    let b = vec![3.0; k * n];
+    let mut c = vec![4.0; m * n];
 
     let a = mg::MatRef::new(m, k, &a, mg::Layout::RowMajor);
     let b = mg::MatRef::new(k, n, &b, mg::Layout::RowMajor);

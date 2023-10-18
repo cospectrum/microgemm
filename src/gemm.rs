@@ -10,14 +10,14 @@ pub fn gemm_with_kernel<T, K>(
     beta: T,
     c: &mut MatMut<T>,
     pack_sizes: &PackSizes,
-    buf: &mut [T],
+    packing_buf: &mut [T],
 ) where
     T: Copy + Zero + One,
     K: Kernel<T>,
 {
     pack_sizes.check(kernel);
-    assert_eq!(pack_sizes.buf_len(kernel), buf.len());
-    let (apack, bpack, dst_buf) = pack_sizes.split_buf(buf);
+    assert_eq!(pack_sizes.buf_len(kernel), packing_buf.len());
+    let (apack, bpack, dst_buf) = pack_sizes.split_buf(packing_buf);
 
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());

@@ -1,12 +1,9 @@
 use crate::{MatMut, MatRef};
-use core::{
-    iter::Sum,
-    ops::{Add, Mul},
-};
+use core::ops::{Add, Mul};
 
 pub fn naive_gemm<T>(alpha: T, a: &MatRef<T>, b: &MatRef<T>, beta: T, c: &mut MatMut<T>)
 where
-    T: Copy + Sum + Add<Output = T> + Mul<Output = T>,
+    T: Copy + Add<Output = T> + Mul<Output = T>,
 {
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(b.ncols(), c.ncols());
@@ -16,7 +13,10 @@ where
 
     for i in 0..a.nrows() {
         for j in 0..b.ncols() {
-            let dot = (0..k).map(|h| a.get(i, h) * b.get(h, j)).sum();
+            let dot = (0..k)
+                .map(|h| a.get(i, h) * b.get(h, j))
+                .reduce(|accum, x| accum + x)
+                .unwrap();
             let z = c.get_mut(i, j);
             *z = alpha * dot + beta * *z;
         }
