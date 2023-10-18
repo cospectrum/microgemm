@@ -10,8 +10,8 @@ const PACK_SIZES: PackSizes = PackSizes {
 
 #[test]
 fn main() {
-    let kernel = CustomKernel;
-    let mut buf = [0; PACK_SIZES.buf_len::<i64, CustomKernel>()];
+    const KERNEL: CustomKernel = CustomKernel;
+    let mut buf = [0; PACK_SIZES.buf_len(&KERNEL)];
 
     let m = 10;
     let k = 2;
@@ -31,7 +31,7 @@ fn main() {
     let beta = -3;
 
     // c <- alpha a b + beta c
-    kernel.gemm(alpha, &a, &b, beta, &mut c, &PACK_SIZES, &mut buf);
+    KERNEL.gemm(alpha, &a, &b, beta, &mut c, &PACK_SIZES, &mut buf);
     naive_gemm(alpha, &a, &b, beta, &mut expect);
     assert_eq!(c.as_slice(), expect.as_slice());
 }

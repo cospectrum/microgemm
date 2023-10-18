@@ -10,7 +10,7 @@ pub struct PackSizes {
 }
 
 impl PackSizes {
-    pub const fn buf_len<T, K>(&self) -> usize
+    pub const fn buf_len<T, K>(&self, _: &K) -> usize
     where
         T: One + Zero + Copy,
         K: Kernel<T>,

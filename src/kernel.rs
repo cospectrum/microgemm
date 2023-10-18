@@ -66,4 +66,10 @@ where
     ) {
         gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes, buf);
     }
+    fn mr(&self) -> usize {
+        Self::MR
+    }
+    fn nr(&self) -> usize {
+        Self::NR
+    }
 }

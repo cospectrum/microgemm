@@ -1,3 +1,3 @@
 mod generic;
 
-pub use generic::KernelGeneric4x4;
+pub use generic::Generic4x4Kernel;

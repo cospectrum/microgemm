@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use microgemm::{
-    kernels::KernelGeneric4x4, utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes,
+    kernels::Generic4x4Kernel, utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes,
 };
 
 const MC: usize = 256;
@@ -8,11 +8,10 @@ const KC: usize = 4096;
 const NC: usize = 512;
 
 fn bench_gemm(criterion: &mut Criterion) {
-    let kernel = KernelGeneric4x4::new();
-
     let mut group = criterion.benchmark_group("bench_generic_kernel");
-    group.sample_size(10);
+    group.sample_size(20);
 
+    let kernel = Generic4x4Kernel;
     let m = MC;
     let k = KC;
     let n = NC;
@@ -22,7 +21,7 @@ fn bench_gemm(criterion: &mut Criterion) {
         kc: KC.min(k),
         nc: NC.min(n),
     };
-    let buf_len = pack_sizes.buf_len::<f32, KernelGeneric4x4<f32>>();
+    let buf_len = pack_sizes.buf_len::<f32, _>(&kernel);
     let mut buf = vec![0f32; buf_len];
 
     let a = black_box(vec![0f32; m * k]);

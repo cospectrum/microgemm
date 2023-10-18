@@ -1,31 +1,12 @@
-use core::{
-    marker::PhantomData,
-    ops::{Add, Mul},
-};
+use core::ops::{Add, Mul};
 use num_traits::{One, Zero};
 
 use crate::Kernel;
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct KernelGeneric4x4<T>
-where
-    T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
-{
-    marker: PhantomData<T>,
-}
+pub struct Generic4x4Kernel;
 
-impl<T> KernelGeneric4x4<T>
-where
-    T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
-{
-    pub fn new() -> Self {
-        Self {
-            marker: PhantomData,
-        }
-    }
-}
-
-impl<T> Kernel<T> for KernelGeneric4x4<T>
+impl<T> Kernel<T> for Generic4x4Kernel
 where
     T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
 {
@@ -80,13 +61,12 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::test_kernel_with_random_i32;
-
     use super::*;
+    use crate::utils::test_kernel_with_random_i32;
 
     #[test]
     fn test_kernel_generic_4x4() {
-        let kernel = KernelGeneric4x4::new();
+        let kernel = Generic4x4Kernel;
         for _ in 0..20 {
             test_kernel_with_random_i32(&kernel);
         }

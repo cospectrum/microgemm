@@ -1,14 +1,3 @@
-# microgemm
-
-General matrix multiplication with custom configuration in Rust.
-
-## Getting started
-
-```sh
-cargo add microgemm
-```
-
-```rs
 use microgemm as mg;
 use microgemm::Kernel as _;
 
@@ -43,4 +32,3 @@ fn main() {
     kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
     println!("{:?}", c.as_slice());
 }
-```
