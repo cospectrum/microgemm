@@ -62,13 +62,29 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::utils::test_kernel_with_random_i32;
+    use crate::utils::*;
+    use rand::{thread_rng, Rng};
+
+    const KERNEL: &Generic4x4Kernel = &Generic4x4Kernel;
 
     #[test]
-    fn test_kernel_generic_4x4() {
-        let kernel = Generic4x4Kernel;
+    fn test_kernel_generic_4x4_f32() {
+        let cmp = |expect: &[f32], got: &[f32]| {
+            let eps = 60.0 * f32::EPSILON;
+            assert_relative_eq!(expect, got, epsilon = eps);
+        };
+        let mut rng = thread_rng();
+
         for _ in 0..20 {
-            test_kernel_with_random_i32(&kernel);
+            let scalar = || rng.gen_range(-1.0..1.0);
+            random_kernel_test(KERNEL, scalar, cmp);
+        }
+    }
+
+    #[test]
+    fn test_kernel_generic_4x4_i32() {
+        for _ in 0..20 {
+            test_kernel_with_random_i32(KERNEL);
         }
     }
 }

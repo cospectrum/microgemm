@@ -7,14 +7,14 @@ fn main() {
 
     let pack_sizes = mg::PackSizes {
         mc: 10 * kernel.mr(), // MC must be divisible by MR
-        kc: 280,
+        kc: 200,
         nc: 20 * kernel.nr(), // NC must be divisible by NR
     };
     let buf_len = pack_sizes.buf_len(&kernel);
     let mut buf = vec![0.0; buf_len];
 
     let m = 100;
-    let k = 360;
+    let k = 380;
     let n = 250;
 
     let a = vec![2.0; m * k];

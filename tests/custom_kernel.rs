@@ -3,9 +3,9 @@ use microgemm::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 struct CustomKernel;
 
 const PACK_SIZES: PackSizes = PackSizes {
-    mc: 2 * CustomKernel::MR, // must be divisible by MR
+    mc: 2 * CustomKernel::MR,
     kc: 5,
-    nc: 3 * CustomKernel::NR, // must be divisible by NR
+    nc: 3 * CustomKernel::NR,
 };
 
 #[test]
