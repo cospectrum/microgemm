@@ -2,11 +2,20 @@
 
 General matrix multiplication with custom configuration in Rust.
 
-## Getting started
+## Install
 
 ```sh
 cargo add microgemm
 ```
+
+## Usage
+
+The `Kernel<T>` trait is the main abstraction of microgemm.
+You can implement it yourself or use kernels that are already provided out of the box.
+
+### Generic Kernel
+
+For example, you can use a generic 4x4 kernel for any type `T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>`
 
 ```rs
 use microgemm as mg;
@@ -41,5 +50,34 @@ fn main() {
     // c <- alpha a b + beta c
     kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
     println!("{:?}", c.as_slice());
+}
+```
+
+### Custom Kernel
+
+`Kernel` trait only requires you to set the MR/NR constants and implement the `microkernel`.
+
+```rs
+use microgemm::{Kernel, MatMut, MatRef};
+
+struct CustomKernel;
+
+impl Kernel<f64> for CustomKernel {
+    const MR: usize = 2;
+    const NR: usize = 2;
+
+    // dst <- alpha lhs rhs + beta dst
+    fn microkernel(
+        &self,
+        alpha: f64,
+        lhs: &MatRef<f64>,
+        rhs: &MatRef<f64>,
+        beta: f64,
+        dst: &mut MatMut<f64>,
+    ) {
+        assert_eq!(lhs.nrows(), Self::MR);
+        assert_eq!(rhs.ncols(), Self::NR);
+        // your microkernel implementation...
+    }
 }
 ```
