@@ -13,7 +13,7 @@ use microgemm as mg;
 use microgemm::Kernel as _;
 
 fn main() {
-    let kernel = mg::select_kernel::<f32>();
+    let kernel = mg::generic4x4_kernel::<f32>();
 
     let pack_sizes = mg::PackSizes {
         mc: 10 * kernel.mr(), // MC must be divisible by MR

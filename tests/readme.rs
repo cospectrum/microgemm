@@ -3,7 +3,8 @@ use microgemm::Kernel as _;
 
 #[test]
 fn main() {
-    let kernel = mg::select_kernel::<f32>();
+    let kernel = mg::generic4x4_kernel::<f32>();
+    // let kernel = mg::select_kernel!(f32);  // selected based on cpu target
 
     let pack_sizes = mg::PackSizes {
         mc: 10 * kernel.mr(), // MC must be divisible by MR

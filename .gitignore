@@ -186,6 +186,7 @@ Cargo.lock
 !README.md
 !LICENSE
 !Cargo.toml
+!Makefile.toml
 
 !tests
 !examples

@@ -3,7 +3,14 @@ use num_traits::{One, Zero};
 
 use crate::Kernel;
 
-#[derive(Debug, Clone, Copy, Default)]
+pub fn generic4x4_kernel<T>() -> impl Kernel<T>
+where
+    T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
+{
+    Generic4x4Kernel
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Generic4x4Kernel;
 
 impl<T> Kernel<T> for Generic4x4Kernel
@@ -75,7 +82,7 @@ mod tests {
         };
         let mut rng = thread_rng();
 
-        for _ in 0..20 {
+        for _ in 0..40 {
             let scalar = || rng.gen_range(-1.0..1.0);
             random_kernel_test(KERNEL, scalar, cmp);
         }
@@ -83,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_kernel_generic_4x4_i32() {
-        for _ in 0..20 {
+        for _ in 0..40 {
             test_kernel_with_random_i32(KERNEL);
         }
     }
