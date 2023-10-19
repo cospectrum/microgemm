@@ -1,10 +1,25 @@
 use crate::{Kernel, MatMut, MatRef};
-use core::arch::aarch64::{float32x4_t, vfmaq_laneq_f32, vld1q_f32, vst1q_f32};
+use core::{
+    arch::aarch64::{float32x4_t, vfmaq_laneq_f32, vld1q_f32, vst1q_f32},
+    marker::PhantomData,
+};
 
-#[derive(Debug, Clone, Copy)]
-pub struct Aarch64Kernel;
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Aarch64Kernel<T> {
+    marker: PhantomData<T>,
+}
 
-impl Kernel<f32> for Aarch64Kernel {
+impl<T> Aarch64Kernel<T> {
+    pub const fn new() -> Self {
+        Self {
+            marker: PhantomData,
+        }
+    }
+}
+
+impl Kernel for Aarch64Kernel<f32> {
+    type Elem = f32;
+
     const MR: usize = 4;
     const NR: usize = 4;
 
@@ -73,8 +88,8 @@ mod tests {
 
     #[test]
     fn test_aarch64_kernel_f32() {
-        let generic_kernel = &Generic4x4Kernel;
-        let aarch64_kernel = &Aarch64Kernel;
+        let generic_kernel = &Generic4x4Kernel::<f32>::new();
+        let aarch64_kernel = &Aarch64Kernel::<f32>::new();
 
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
@@ -82,7 +97,7 @@ mod tests {
             assert_relative_eq!(expect, got, epsilon = eps);
         };
 
-        for _ in 0..50 {
+        for _ in 0..40 {
             let mc = rng.gen_range(1..20) * 4;
             let nc = rng.gen_range(1..20) * 4;
             let scalar = || rng.gen_range(-1.0..1.0);

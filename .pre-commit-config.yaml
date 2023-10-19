@@ -35,10 +35,3 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-
-      - id: bench
-        name: bench
-        entry: cargo bench
-        language: system
-        pass_filenames: false
-        always_run: true

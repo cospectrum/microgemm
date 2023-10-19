@@ -20,4 +20,4 @@ pub use mat::*;
 pub use num_traits::{One, Zero};
 pub use packing::PackSizes;
 
-pub use kernels::generic4x4_kernel;
+pub use kernels::{generic2x2_kernel, generic4x4_kernel};

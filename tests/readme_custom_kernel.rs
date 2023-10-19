@@ -1,9 +1,34 @@
-use microgemm as mg;
-use microgemm::Kernel as _;
+use microgemm::{Kernel, MatMut, MatRef};
+
+struct CustomKernel;
+
+impl Kernel for CustomKernel {
+    type Elem = f64;
+
+    const MR: usize = 2;
+    const NR: usize = 2;
+
+    // dst <- alpha lhs rhs + beta dst
+    #[allow(unused_variables)]
+    fn microkernel(
+        &self,
+        alpha: f64,
+        lhs: &MatRef<f64>,
+        rhs: &MatRef<f64>,
+        beta: f64,
+        dst: &mut MatMut<f64>,
+    ) {
+        assert_eq!(lhs.nrows(), Self::MR);
+        assert_eq!(rhs.ncols(), Self::NR);
+        // your implementation...
+    }
+}
 
 #[test]
 fn main() {
-    let kernel = mg::generic4x4_kernel::<f32>();
+    use microgemm as mg;
+
+    let kernel = CustomKernel;
 
     let pack_sizes = mg::PackSizes {
         mc: 10 * kernel.mr(), // MC must be divisible by MR
@@ -28,7 +53,6 @@ fn main() {
     let alpha = 2.0;
     let beta = -3.0;
 
-    // c <- alpha a b + beta c
     kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
     println!("{:?}", c.as_slice());
 }

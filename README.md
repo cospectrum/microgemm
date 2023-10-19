@@ -10,12 +10,10 @@ cargo add microgemm
 
 ## Usage
 
-The `Kernel<T>` trait is the main abstraction of microgemm.
+The `Kernel` trait is the main abstraction of microgemm.
 You can implement it yourself or use kernels that are already provided out of the box.
 
-### Generic Kernel
-
-For example, you can use a generic 4x4 kernel for any type `T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>`
+### Kernel Usage
 
 ```rs
 use microgemm as mg;
@@ -23,6 +21,8 @@ use microgemm::Kernel as _;
 
 fn main() {
     let kernel = mg::generic4x4_kernel::<f32>();
+    assert_eq!(kernel.mr(), 4);
+    assert_eq!(kernel.nr(), 4);
 
     let pack_sizes = mg::PackSizes {
         mc: 10 * kernel.mr(), // MC must be divisible by MR
@@ -53,20 +53,23 @@ fn main() {
 }
 ```
 
-### Custom Kernel
+### Custom Kernel Implementation
 
-`Kernel` trait only requires you to set the MR/NR constants and implement the `microkernel`.
+The `Kernel` trait requires you to set the MR/NR constants and implement the `microkernel`.
 
 ```rs
 use microgemm::{Kernel, MatMut, MatRef};
 
 struct CustomKernel;
 
-impl Kernel<f64> for CustomKernel {
+impl Kernel for CustomKernel {
+    type Elem = f64;
+
     const MR: usize = 2;
     const NR: usize = 2;
 
     // dst <- alpha lhs rhs + beta dst
+    #[allow(unused_variables)]
     fn microkernel(
         &self,
         alpha: f64,
@@ -77,7 +80,7 @@ impl Kernel<f64> for CustomKernel {
     ) {
         assert_eq!(lhs.nrows(), Self::MR);
         assert_eq!(rhs.ncols(), Self::NR);
-        // your microkernel implementation...
+        // your implementation...
     }
 }
 ```

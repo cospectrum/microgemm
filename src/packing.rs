@@ -13,7 +13,7 @@ impl PackSizes {
     pub const fn buf_len<T, K>(&self, _: &K) -> usize
     where
         T: One + Zero + Copy,
-        K: Kernel<T>,
+        K: Kernel<Elem = T>,
     {
         let mr = K::MR;
         let nr = K::NR;
@@ -22,7 +22,7 @@ impl PackSizes {
     pub(crate) fn check<T, K>(&self, _: &K)
     where
         T: One + Zero + Copy,
-        K: Kernel<T>,
+        K: Kernel<Elem = T>,
     {
         let mr = K::MR;
         let nr = K::NR;
@@ -55,7 +55,7 @@ pub(crate) fn pack_a<T, K>(
     a_cols: Range<usize>,
 ) where
     T: One + Zero + Copy,
-    K: Kernel<T>,
+    K: Kernel<Elem = T>,
 {
     let mc = pack_sizes.mc;
     let kc = pack_sizes.kc;
@@ -81,7 +81,7 @@ pub(crate) fn pack_b<T, K>(
     b_cols: Range<usize>,
 ) where
     T: One + Zero + Copy,
-    K: Kernel<T>,
+    K: Kernel<Elem = T>,
 {
     let kc = pack_sizes.kc;
     let nc = pack_sizes.nc;
