@@ -1,6 +1,17 @@
+#![no_std]
+
 #[cfg(test)]
 #[macro_use]
 extern crate approx;
+
+#[cfg(test)]
+#[macro_use]
+extern crate std;
+
+#[cfg(test)]
+mod std_prelude {
+    pub use std::prelude::rust_2021::*;
+}
 
 mod gemm;
 mod kernel;

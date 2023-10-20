@@ -69,6 +69,7 @@ pub fn gemm_with_kernel<T, K>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::std_prelude::*;
     use crate::{utils::naive_gemm, Layout};
 
     struct TestKernel;

@@ -2,7 +2,19 @@
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown"]
 
+[tasks.add-thumbv7em-none-eabihf]
+command = "rustup"
+args = ["target", "add", "thumbv7em-none-eabihf"]
+
+[tasks.build-thumbv7em-none-eabihf]
+command = "cargo"
+args = ["build", "--target", "thumbv7em-none-eabihf"]
+dependencies = ["add-thumbv7em-none-eabihf"]
+
 [tasks.build-all]
 command = "cargo"
 args = ["build"]
-dependencies = ["build-wasm32"]
+dependencies = [
+    "build-wasm32",
+    "build-thumbv7em-none-eabihf",
+]
