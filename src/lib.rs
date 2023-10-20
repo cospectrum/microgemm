@@ -6,8 +6,6 @@ mod gemm;
 mod kernel;
 mod mat;
 
-pub mod select;
-
 pub(crate) mod copying;
 pub(crate) mod packing;
 
@@ -19,5 +17,3 @@ pub use kernel::Kernel;
 pub use mat::*;
 pub use num_traits::{One, Zero};
 pub use packing::PackSizes;
-
-pub use kernels::{generic2x2_kernel, generic4x4_kernel};

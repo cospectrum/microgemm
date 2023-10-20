@@ -1,15 +1,7 @@
+use crate::Kernel;
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 use num_traits::{One, Zero};
-
-use crate::Kernel;
-
-pub fn generic4x4_kernel<T>() -> impl Kernel<Elem = T>
-where
-    T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
-{
-    Generic4x4Kernel::new()
-}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Generic4x4Kernel<T> {
@@ -41,8 +33,8 @@ where
         beta: T,
         dst: &mut crate::MatMut<T>,
     ) {
-        debug_assert_eq!(dst.nrows(), 4);
-        debug_assert_eq!(dst.ncols(), 4);
+        debug_assert_eq!(dst.nrows(), Self::MR);
+        debug_assert_eq!(dst.ncols(), Self::NR);
         assert_eq!(lhs.as_slice().len(), rhs.as_slice().len());
 
         let mut col0 = [T::zero(); 4];

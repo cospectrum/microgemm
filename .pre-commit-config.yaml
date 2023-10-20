@@ -31,7 +31,7 @@ repos:
 
       - id: build
         name: build
-        entry: cargo make build-wasm32
+        entry: cargo make build-all
         language: system
         pass_filenames: false
         always_run: true

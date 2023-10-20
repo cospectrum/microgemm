@@ -3,7 +3,7 @@ use microgemm::Kernel as _;
 
 #[test]
 fn main() {
-    let kernel = mg::generic4x4_kernel::<f32>();
+    let kernel = mg::kernels::Generic4x4Kernel::<f32>::new();
     assert_eq!(kernel.mr(), 4);
     assert_eq!(kernel.nr(), 4);
 

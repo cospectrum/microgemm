@@ -1,3 +1,8 @@
 [tasks.build-wasm32]
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown"]
+
+[tasks.build-all]
+command = "cargo"
+args = ["build"]
+dependencies = ["build-wasm32"]

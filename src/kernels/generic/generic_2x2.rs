@@ -1,17 +1,9 @@
+use crate::Kernel;
 use core::{
     marker::PhantomData,
     ops::{Add, Mul},
 };
 use num_traits::{One, Zero};
-
-use crate::Kernel;
-
-pub fn generic2x2_kernel<T>() -> impl Kernel<Elem = T>
-where
-    T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
-{
-    Generic2x2Kernel::new()
-}
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Generic2x2Kernel<T> {
@@ -43,8 +35,8 @@ where
         beta: T,
         dst: &mut crate::MatMut<T>,
     ) {
-        debug_assert_eq!(dst.nrows(), 2);
-        debug_assert_eq!(dst.ncols(), 2);
+        debug_assert_eq!(dst.nrows(), Self::MR);
+        debug_assert_eq!(dst.ncols(), Self::NR);
         assert_eq!(lhs.as_slice().len(), rhs.as_slice().len());
 
         let mut col0 = [T::zero(); 2];
@@ -83,7 +75,7 @@ mod tests {
 
     #[test]
     fn test_generic2x2_kernel_f64() {
-        let kernel = generic2x2_kernel::<f64>();
+        let kernel = Generic2x2Kernel::<f64>::new();
 
         let cmp = |expect: &[f64], got: &[f64]| {
             let eps = 70.0 * f64::EPSILON;
@@ -99,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_generic2x2_kernel_i32() {
-        let kernel = generic2x2_kernel::<i32>();
+        let kernel = Generic2x2Kernel::<i32>::new();
         for _ in 0..20 {
             test_kernel_with_random_i32(&kernel);
         }
