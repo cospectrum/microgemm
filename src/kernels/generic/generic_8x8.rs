@@ -1,4 +1,6 @@
+use super::{square_microkernel, write_to_col_major};
 use crate::Kernel;
+
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 use num_traits::{One, Zero};
@@ -35,51 +37,12 @@ where
     ) {
         debug_assert_eq!(dst.nrows(), Self::MR);
         debug_assert_eq!(dst.ncols(), Self::NR);
-        assert_eq!(lhs.as_slice().len(), rhs.as_slice().len());
+        debug_assert_eq!(dst.row_stride(), 1);
 
-        let mut col0 = [T::zero(); 8];
-        let mut col1 = [T::zero(); 8];
-        let mut col2 = [T::zero(); 8];
-        let mut col3 = [T::zero(); 8];
-        let mut col4 = [T::zero(); 8];
-        let mut col5 = [T::zero(); 8];
-        let mut col6 = [T::zero(); 8];
-        let mut col7 = [T::zero(); 8];
-
-        let update_col = |col: &mut [T; 8], v: &[T], scalar: T| {
-            col.iter_mut().zip(v).for_each(|(out, &x)| {
-                *out = *out + x * scalar;
-            });
-        };
-
-        let left = lhs.as_slice().chunks_exact(8);
-        let right = rhs.as_slice().chunks_exact(8);
-
-        for (a, b) in left.zip(right) {
-            update_col(&mut col0, a, b[0]);
-            update_col(&mut col1, a, b[1]);
-            update_col(&mut col2, a, b[2]);
-            update_col(&mut col3, a, b[3]);
-            update_col(&mut col4, a, b[4]);
-            update_col(&mut col5, a, b[5]);
-            update_col(&mut col6, a, b[6]);
-            update_col(&mut col7, a, b[7]);
-        }
-
-        let mut write_to = |ncol: usize, from: &[T; 8]| {
-            for (i, &val) in from.iter().enumerate() {
-                let to = dst.get_mut(i, ncol);
-                *to = alpha * val + beta * *to;
-            }
-        };
-        write_to(0, &col0);
-        write_to(1, &col1);
-        write_to(2, &col2);
-        write_to(3, &col3);
-        write_to(4, &col4);
-        write_to(5, &col5);
-        write_to(6, &col6);
-        write_to(7, &col7);
+        const DIM: usize = 8;
+        let mut cols = [T::zero(); DIM * DIM];
+        square_microkernel::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
+        write_to_col_major::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
     }
 }
 

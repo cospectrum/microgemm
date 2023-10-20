@@ -1,4 +1,6 @@
+use super::{square_microkernel, write_to_col_major};
 use crate::Kernel;
+
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 use num_traits::{One, Zero};
@@ -35,39 +37,12 @@ where
     ) {
         debug_assert_eq!(dst.nrows(), Self::MR);
         debug_assert_eq!(dst.ncols(), Self::NR);
-        assert_eq!(lhs.as_slice().len(), rhs.as_slice().len());
+        debug_assert_eq!(dst.row_stride(), 1);
 
-        let mut col0 = [T::zero(); 4];
-        let mut col1 = [T::zero(); 4];
-        let mut col2 = [T::zero(); 4];
-        let mut col3 = [T::zero(); 4];
-
-        let update_col = |col: &mut [T; 4], v: &[T], scalar: T| {
-            col.iter_mut().zip(v).for_each(|(out, &x)| {
-                *out = *out + x * scalar;
-            });
-        };
-
-        let left = lhs.as_slice().chunks_exact(4);
-        let right = rhs.as_slice().chunks_exact(4);
-
-        for (a, b) in left.zip(right) {
-            update_col(&mut col0, a, b[0]);
-            update_col(&mut col1, a, b[1]);
-            update_col(&mut col2, a, b[2]);
-            update_col(&mut col3, a, b[3]);
-        }
-
-        let mut write_to = |ncol: usize, from: &[T; 4]| {
-            for (i, &val) in from.iter().enumerate() {
-                let to = dst.get_mut(i, ncol);
-                *to = alpha * val + beta * *to;
-            }
-        };
-        write_to(0, &col0);
-        write_to(1, &col1);
-        write_to(2, &col2);
-        write_to(3, &col3);
+        const DIM: usize = 4;
+        let mut cols = [T::zero(); DIM * DIM];
+        square_microkernel::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
+        write_to_col_major::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
     }
 }
 
