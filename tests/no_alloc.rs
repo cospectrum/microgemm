@@ -1,17 +1,17 @@
 use mg::Kernel;
 use microgemm as mg;
-use microgemm::kernels::Generic4x4Kernel;
+use microgemm::kernels::Generic8x8Kernel;
 
 const M: usize = 10;
 const K: usize = 15;
 const N: usize = 20;
 
-const KERNEL: Generic4x4Kernel<f32> = Generic4x4Kernel::<f32>::new();
+const KERNEL: Generic8x8Kernel<f32> = Generic8x8Kernel::<f32>::new();
 
 const PACK_SIZES: &mg::PackSizes = &mg::PackSizes {
-    mc: Generic4x4Kernel::<f32>::MR,
+    mc: Generic8x8Kernel::<f32>::MR,
     kc: 15,
-    nc: Generic4x4Kernel::<f32>::NR,
+    nc: Generic8x8Kernel::<f32>::NR,
 };
 const BUF_LEN: usize = PACK_SIZES.buf_len(&KERNEL);
 

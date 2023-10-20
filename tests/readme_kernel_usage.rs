@@ -3,14 +3,14 @@ use microgemm::Kernel as _;
 
 #[test]
 fn main() {
-    let kernel = mg::kernels::Generic4x4Kernel::<f32>::new();
-    assert_eq!(kernel.mr(), 4);
-    assert_eq!(kernel.nr(), 4);
+    let kernel = mg::kernels::Generic8x8Kernel::<f32>::new();
+    assert_eq!(kernel.mr(), 8);
+    assert_eq!(kernel.nr(), 8);
 
     let pack_sizes = mg::PackSizes {
-        mc: 10 * kernel.mr(), // MC must be divisible by MR
-        kc: 200,
-        nc: 20 * kernel.nr(), // NC must be divisible by NR
+        mc: 5 * kernel.mr(), // MC must be divisible by MR
+        kc: 380,
+        nc: 10 * kernel.nr(), // NC must be divisible by NR
     };
     let buf_len = pack_sizes.buf_len(&kernel);
     let mut buf = vec![0.0; buf_len];

@@ -29,6 +29,17 @@ fn bench_gemm(criterion: &mut Criterion) {
     let beta = black_box(0.0);
     let mkn = (m, k, n);
 
+    group.bench_function("generic8x8_kernel", |bencher| {
+        let kernel = mg::kernels::Generic8x8Kernel::<f32>::new();
+        let mut buf = vec![0f32; pack_sizes.buf_len(&kernel)];
+        let (a, b, mut c) = input_values();
+        let (a, b, mut c) = matrices(mkn, &a, &b, &mut c);
+        let f = || {
+            kernel.gemm(alpha, &a, &b, beta, &mut c, pack_sizes, &mut buf);
+        };
+        bencher.iter(f);
+    });
+
     group.bench_function("generic4x4_kernel", |bencher| {
         let kernel = mg::kernels::Generic4x4Kernel::<f32>::new();
         let mut buf = vec![0f32; pack_sizes.buf_len(&kernel)];
