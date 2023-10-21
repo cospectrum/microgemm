@@ -4,10 +4,10 @@ use microgemm as mg;
 use microgemm::{Kernel, Layout, MatMut, MatRef, PackSizes};
 
 fn bench_gemm(criterion: &mut Criterion) {
-    let group = &mut criterion.benchmark_group("bench gemm f32");
+    let group = &mut criterion.benchmark_group("bench-gemm-f32");
     group.sample_size(10);
 
-    const DIM: usize = 320;
+    const DIM: usize = 2 * 320;
 
     let m = DIM;
     let k = DIM;
@@ -20,12 +20,12 @@ fn bench_gemm(criterion: &mut Criterion) {
         nc: n,
     };
     let kernel = &mg::kernels::Generic8x8Kernel::<f32>::new();
-    bench_kernel_with(group, "generic kernel", kernel, mkn, pack_sizes);
+    bench_kernel_with(group, "generic-kernel", kernel, mkn, pack_sizes);
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
         let kernel = &mg::kernels::Aarch64Kernel::<f32>::new();
-        bench_kernel_with(group, "neon kernel", kernel, mkn, pack_sizes);
+        bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
 }
 

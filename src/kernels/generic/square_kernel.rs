@@ -15,7 +15,7 @@ impl<T, const DIM: usize> GenericSquareKernel<T, DIM> {
     }
 }
 
-fn square_microkernel<T, const DIM: usize>(lhs: &[T], rhs: &[T], cols: &mut [T])
+fn loop_micropanels<T, const DIM: usize>(lhs: &[T], rhs: &[T], cols: &mut [T])
 where
     T: Copy + Add<Output = T> + Mul<Output = T>,
 {
@@ -37,7 +37,7 @@ where
     });
 }
 
-fn write_cols_to_col_major<T, const DIM: usize>(dst: &mut [T], cols: &[T], alpha: T, beta: T)
+fn write_cols_to_colmajor<T, const DIM: usize>(dst: &mut [T], cols: &[T], alpha: T, beta: T)
 where
     T: Copy + Add<Output = T> + Mul<Output = T>,
 {
@@ -67,14 +67,14 @@ macro_rules! impl_generic_square_kernel {
                 beta: Self::Elem,
                 dst: &mut crate::MatMut<Self::Elem>,
             ) {
-                debug_assert_eq!(dst.nrows(), Self::MR);
-                debug_assert_eq!(dst.ncols(), Self::NR);
-                debug_assert_eq!(dst.row_stride(), 1);
+                assert_eq!(dst.nrows(), Self::MR);
+                assert_eq!(dst.ncols(), Self::NR);
+                assert_eq!(dst.row_stride(), 1);
 
                 const DIM: usize = $dim;
                 let mut cols = [T::zero(); DIM * DIM];
-                square_microkernel::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
-                write_cols_to_col_major::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
+                loop_micropanels::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
+                write_cols_to_colmajor::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
             }
         }
     };
