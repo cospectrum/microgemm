@@ -34,6 +34,15 @@ pub(crate) fn random_kernel_test<T, K>(
     cmp_kernels_with_random_data(&test_kernel, kernel, scalar, cmp, mc, nc);
 }
 
+pub(crate) fn toss_a_coin<T>(front: T, back: T) -> T {
+    let mut rng = rand::thread_rng();
+    if rng.gen_bool(0.5) {
+        front
+    } else {
+        back
+    }
+}
+
 pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     kernel1: &K1,
     kernel2: &K2,
@@ -52,13 +61,7 @@ pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     let k = rng.gen_range(1..100);
     let n = rng.gen_range(1..100);
 
-    let mut random_layout = || {
-        if rng.gen_bool(0.5) {
-            Layout::RowMajor
-        } else {
-            Layout::ColumnMajor
-        }
-    };
+    let random_layout = || toss_a_coin(Layout::RowMajor, Layout::ColumnMajor);
 
     let a = (0..m * k).map(|_| scalar()).collect::<Vec<T>>();
     let b = (0..k * n).map(|_| scalar()).collect::<Vec<T>>();
@@ -79,8 +82,8 @@ pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     let mut buf1 = vec![fill; buf1_len];
     let mut buf2 = vec![fill; buf2_len];
 
-    let alpha = scalar();
-    let beta = scalar();
+    let alpha = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
+    let beta = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
 
     kernel1.gemm(alpha, &a, &b, beta, &mut c1, &pack_sizes, &mut buf1);
     kernel2.gemm(alpha, &a, &b, beta, &mut c2, &pack_sizes, &mut buf2);

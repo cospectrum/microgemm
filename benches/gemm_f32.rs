@@ -43,7 +43,7 @@ fn bench_kernel_with(
     let (a, b, mut c) = matrices(mkn, &a, &b, &mut c);
 
     let alpha = black_box(1.0);
-    let beta = black_box(0.0);
+    let beta = black_box(-1.0);
     let mut buf = black_box(vec![0f32; pack_sizes.buf_len(kernel)]);
 
     let mut f = || {
