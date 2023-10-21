@@ -52,3 +52,34 @@ fn main() {
     println!("{:?}", c.as_slice());
 }
 ```
+
+### Custom Kernel Implementation
+
+```rs
+use microgemm::{Kernel, MatMut, MatRef};
+
+struct CustomKernel;
+
+impl Kernel for CustomKernel {
+    type Elem = f64;
+
+    const MR: usize = 4;
+    const NR: usize = 4;
+
+    // dst <- alpha lhs rhs + beta dst
+    fn microkernel(
+        &self,
+        alpha: f64,
+        lhs: &MatRef<f64>,
+        rhs: &MatRef<f64>,
+        beta: f64,
+        dst: &mut MatMut<f64>,
+    ) {
+        assert_eq!(lhs.row_stride(), 1); // lhs is col-major by default
+        assert_eq!(rhs.col_stride(), 1); // rhs is row-major by default
+        assert_eq!(lhs.nrows(), Self::MR);
+        assert_eq!(rhs.ncols(), Self::NR);
+        // your microkernel implementation...
+    }
+}
+```
