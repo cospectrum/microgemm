@@ -31,7 +31,7 @@ mod tests {
         test_kernel_i32(Generic32x32Kernel::new());
     }
 
-    fn test_kernel_f32(kernel: impl Kernel<Elem = f32>) {
+    fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 75.0 * f32::EPSILON;
             assert_relative_eq!(expect, got, epsilon = eps);
@@ -43,7 +43,7 @@ mod tests {
             random_kernel_test(&kernel, scalar, cmp);
         }
     }
-    fn test_kernel_i32(kernel: impl Kernel<Elem = i32>) {
+    fn test_kernel_i32(kernel: impl Kernel<Scalar = i32>) {
         for _ in 0..20 {
             test_kernel_with_random_i32(&kernel);
         }

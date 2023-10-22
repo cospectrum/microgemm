@@ -33,7 +33,7 @@ fn bench_gemm(criterion: &mut Criterion) {
 fn bench_kernel_with(
     group: &mut BenchmarkGroup<'_, WallTime>,
     name: &str,
-    kernel: &impl Kernel<Elem = f32>,
+    kernel: &impl Kernel<Scalar = f32>,
     mkn: [usize; 3],
     pack_sizes: &PackSizes,
 ) {

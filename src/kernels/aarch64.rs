@@ -18,7 +18,7 @@ impl<T> Aarch64Kernel<T> {
 }
 
 impl Kernel for Aarch64Kernel<f32> {
-    type Elem = f32;
+    type Scalar = f32;
 
     const MR: usize = 4;
     const NR: usize = 4;
