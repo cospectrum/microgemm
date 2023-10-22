@@ -1,4 +1,7 @@
-use crate::{Kernel, One, Zero};
+use crate::{
+    typenum::{U16, U2, U32, U4, U8},
+    Kernel, One, Zero,
+};
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 
@@ -49,15 +52,14 @@ where
 }
 
 macro_rules! impl_generic_square_kernel {
-    ($dim:literal) => {
+    ($dim:literal, $num:ty) => {
         impl<T> Kernel for GenericSquareKernel<T, $dim>
         where
             T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
         {
             type Scalar = T;
-
-            const MR: usize = $dim;
-            const NR: usize = $dim;
+            type Mr = $num;
+            type Nr = $num;
 
             fn microkernel(
                 &self,
@@ -80,8 +82,8 @@ macro_rules! impl_generic_square_kernel {
     };
 }
 
-impl_generic_square_kernel!(2);
-impl_generic_square_kernel!(4);
-impl_generic_square_kernel!(8);
-impl_generic_square_kernel!(16);
-impl_generic_square_kernel!(32);
+impl_generic_square_kernel!(2, U2);
+impl_generic_square_kernel!(4, U4);
+impl_generic_square_kernel!(8, U8);
+impl_generic_square_kernel!(16, U16);
+impl_generic_square_kernel!(32, U32);

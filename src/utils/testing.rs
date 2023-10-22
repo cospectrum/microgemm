@@ -109,8 +109,8 @@ where
 {
     type Scalar = T;
 
-    const MR: usize = 0;
-    const NR: usize = 0;
+    type Mr = crate::typenum::U0;
+    type Nr = crate::typenum::U0;
 
     fn microkernel(&self, _: T, _: &MatRef<T>, _: &MatRef<T>, _: T, _: &mut MatMut<T>) {
         unreachable!()

@@ -23,6 +23,8 @@ pub(crate) mod packing;
 pub mod kernels;
 pub mod utils;
 
+pub use generic_array::typenum;
+
 pub use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
 pub use mat::*;

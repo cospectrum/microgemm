@@ -1,12 +1,11 @@
-use microgemm::{Kernel, MatMut, MatRef};
+use microgemm::{typenum::U4, Kernel, MatMut, MatRef};
 
 struct CustomKernel;
 
 impl Kernel for CustomKernel {
     type Scalar = f64;
-
-    const MR: usize = 4;
-    const NR: usize = 4;
+    type Mr = U4;
+    type Nr = U4;
 
     // dst <- alpha lhs rhs + beta dst
     #[allow(unused_variables)]

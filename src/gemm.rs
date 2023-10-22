@@ -70,15 +70,14 @@ pub fn gemm_with_kernel<T, K>(
 mod tests {
     use super::*;
     use crate::std_prelude::*;
-    use crate::{utils::naive_gemm, Layout};
+    use crate::{typenum::U5, utils::naive_gemm, Layout};
 
     struct TestKernel;
 
     impl Kernel for TestKernel {
         type Scalar = i32;
-
-        const MR: usize = 5;
-        const NR: usize = 5;
+        type Mr = U5;
+        type Nr = U5;
 
         fn microkernel(
             &self,
