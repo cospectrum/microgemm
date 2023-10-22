@@ -54,18 +54,18 @@ macro_rules! impl_generic_square_kernel {
         where
             T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
         {
-            type Elem = T;
+            type Scalar = T;
 
             const MR: usize = $dim;
             const NR: usize = $dim;
 
             fn microkernel(
                 &self,
-                alpha: Self::Elem,
-                lhs: &crate::MatRef<Self::Elem>,
-                rhs: &crate::MatRef<Self::Elem>,
-                beta: Self::Elem,
-                dst: &mut crate::MatMut<Self::Elem>,
+                alpha: Self::Scalar,
+                lhs: &crate::MatRef<Self::Scalar>,
+                rhs: &crate::MatRef<Self::Scalar>,
+                beta: Self::Scalar,
+                dst: &mut crate::MatMut<Self::Scalar>,
             ) {
                 assert_eq!(dst.nrows(), Self::MR);
                 assert_eq!(dst.ncols(), Self::NR);

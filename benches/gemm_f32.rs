@@ -19,20 +19,21 @@ fn bench_gemm(criterion: &mut Criterion) {
         kc: k,
         nc: n,
     };
-    let kernel = &mg::kernels::Generic8x8Kernel::<f32>::new();
-    bench_kernel_with(group, "generic-kernel", kernel, mkn, pack_sizes);
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
         let kernel = &mg::kernels::Aarch64Kernel::<f32>::new();
         bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
+
+    let kernel = &mg::kernels::Generic8x8Kernel::<f32>::new();
+    bench_kernel_with(group, "generic-kernel", kernel, mkn, pack_sizes);
 }
 
 fn bench_kernel_with(
     group: &mut BenchmarkGroup<'_, WallTime>,
     name: &str,
-    kernel: &impl Kernel<Elem = f32>,
+    kernel: &impl Kernel<Scalar = f32>,
     mkn: [usize; 3],
     pack_sizes: &PackSizes,
 ) {

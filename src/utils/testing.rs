@@ -6,7 +6,7 @@ use rand::Rng;
 
 pub(crate) fn test_kernel_with_random_i32<K>(kernel: &K)
 where
-    K: Kernel<Elem = i32>,
+    K: Kernel<Scalar = i32>,
 {
     let rng = &mut rand::thread_rng();
     let distr = rand::distributions::Uniform::new(-30, 30);
@@ -24,7 +24,7 @@ pub(crate) fn random_kernel_test<T, K>(
     scalar: impl FnMut() -> T,
     cmp: impl FnOnce(&[T], &[T]),
 ) where
-    K: Kernel<Elem = T>,
+    K: Kernel<Scalar = T>,
     T: Copy + Zero + One,
 {
     let rng = &mut rand::thread_rng();
@@ -51,8 +51,8 @@ pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     mc: usize,
     nc: usize,
 ) where
-    K1: Kernel<Elem = T>,
-    K2: Kernel<Elem = T>,
+    K1: Kernel<Scalar = T>,
+    K2: Kernel<Scalar = T>,
     T: Copy + Zero + One,
 {
     let rng = &mut rand::thread_rng();
@@ -107,7 +107,7 @@ impl<T> Kernel for TestKernel<T>
 where
     T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
 {
-    type Elem = T;
+    type Scalar = T;
 
     const MR: usize = 0;
     const NR: usize = 0;

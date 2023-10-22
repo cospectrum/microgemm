@@ -13,7 +13,7 @@ pub fn gemm_with_kernel<T, K>(
     packing_buf: &mut [T],
 ) where
     T: Copy + Zero + One,
-    K: Kernel<Elem = T>,
+    K: Kernel<Scalar = T>,
 {
     pack_sizes.check(kernel);
     assert_eq!(pack_sizes.buf_len(kernel), packing_buf.len());
@@ -75,7 +75,7 @@ mod tests {
     struct TestKernel;
 
     impl Kernel for TestKernel {
-        type Elem = i32;
+        type Scalar = i32;
 
         const MR: usize = 5;
         const NR: usize = 5;

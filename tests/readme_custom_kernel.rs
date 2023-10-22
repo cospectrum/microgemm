@@ -3,7 +3,7 @@ use microgemm::{Kernel, MatMut, MatRef};
 struct CustomKernel;
 
 impl Kernel for CustomKernel {
-    type Elem = f64;
+    type Scalar = f64;
 
     const MR: usize = 4;
     const NR: usize = 4;

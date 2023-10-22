@@ -3,7 +3,7 @@ use microgemm::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 struct TestKernel;
 
 impl Kernel for TestKernel {
-    type Elem = i32;
+    type Scalar = i32;
 
     const MR: usize = 5;
     const NR: usize = 5;
