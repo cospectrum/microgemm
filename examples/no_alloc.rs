@@ -13,10 +13,9 @@ const PACK_SIZES: &mg::PackSizes = &mg::PackSizes {
     kc: 15,
     nc: Generic4x4Kernel::<f32>::NR,
 };
-const BUF_LEN: usize = PACK_SIZES.buf_len(&KERNEL);
 
 fn main() {
-    let mut buf = [0f32; BUF_LEN];
+    let mut buf = [0f32; PACK_SIZES.buf_len()];
 
     let alpha = 2f32;
     let beta = -3f32;

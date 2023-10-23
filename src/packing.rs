@@ -10,14 +10,8 @@ pub struct PackSizes {
 }
 
 impl PackSizes {
-    pub const fn buf_len<T, K>(&self, _: &K) -> usize
-    where
-        T: One + Zero + Copy,
-        K: Kernel<Scalar = T>,
-    {
-        let mr = K::MR;
-        let nr = K::NR;
-        self.mc * self.kc + self.kc * self.nc + mr * nr
+    pub const fn buf_len(&self) -> usize {
+        self.mc * self.kc + self.kc * self.nc
     }
     pub(crate) fn check<T, K>(&self, _: &K)
     where
@@ -31,13 +25,9 @@ impl PackSizes {
         assert_eq!(self.mc % mr, 0);
         assert_eq!(self.nc % nr, 0);
     }
-    pub(crate) fn split_buf<'buf, T>(
-        &self,
-        buf: &'buf mut [T],
-    ) -> (&'buf mut [T], &'buf mut [T], &'buf mut [T]) {
-        let (apack, tail) = buf.split_at_mut(self.mc * self.kc);
-        let (bpack, dst_buf) = tail.split_at_mut(self.kc * self.nc);
-        (apack, bpack, dst_buf)
+    pub(crate) fn split_buf<'buf, T>(&self, buf: &'buf mut [T]) -> (&'buf mut [T], &'buf mut [T]) {
+        let (apack, bpack) = buf.split_at_mut(self.mc * self.kc);
+        (apack, bpack)
     }
 }
 

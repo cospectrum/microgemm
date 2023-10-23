@@ -20,8 +20,8 @@ pub fn gemm_with_kernel<T, K>(
     K: Kernel<Scalar = T>,
 {
     pack_sizes.check(kernel);
-    assert_eq!(pack_sizes.buf_len(kernel), packing_buf.len());
-    let (apack, bpack, _) = pack_sizes.split_buf(packing_buf);
+    assert_eq!(pack_sizes.buf_len(), packing_buf.len());
+    let (apack, bpack) = pack_sizes.split_buf(packing_buf);
 
     let zero = T::zero();
     let mut dst_buf: GenericArray<T, Product<K::Mr, K::Nr>> = GenericArray::generate(|_| zero);
@@ -132,7 +132,7 @@ mod tests {
         let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
 
         let pack_sizes = PackSizes { mc: 5 * TestKernel::MR,  kc: 2, nc: 2 * TestKernel::NR };
-        let mut buf = vec![-9; pack_sizes.buf_len::<i32, TestKernel>(kernel)];
+        let mut buf = vec![-9; pack_sizes.buf_len()];
 
         gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
@@ -172,7 +172,7 @@ mod tests {
             kc: 2,
             nc: 3 * TestKernel::NR,
         };
-        let mut buf = vec![-1; pack_sizes.buf_len::<i32, _>(kernel)];
+        let mut buf = vec![-1; pack_sizes.buf_len()];
 
         let alpha = 2;
         let beta = -3;
