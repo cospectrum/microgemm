@@ -1,7 +1,10 @@
 use crate::{gemm_with_kernel, Layout, MatMut, MatRef, PackSizes};
 use core::ops::{Mul, Range};
 
-use generic_array::{typenum::Unsigned, ArrayLength};
+use generic_array::{
+    typenum::{Prod, Unsigned},
+    ArrayLength,
+};
 use num_traits::{One, Zero};
 
 pub trait Kernel
@@ -10,7 +13,7 @@ where
     Self::Scalar: Copy + Zero + One,
 {
     type Scalar;
-    type Mr: ArrayLength + Mul<Self::Nr>;
+    type Mr: ArrayLength + Multiply<Self::Nr>;
     type Nr: ArrayLength;
 
     const MR: usize = Self::Mr::USIZE;
@@ -85,4 +88,16 @@ where
     fn nr(&self) -> usize {
         Self::NR
     }
+}
+
+pub trait Multiply<Rhs> {
+    type Output: ArrayLength;
+}
+
+impl<Lhs, Rhs> Multiply<Rhs> for Lhs
+where
+    Lhs: Mul<Rhs>,
+    Prod<Lhs, Rhs>: ArrayLength,
+{
+    type Output = Prod<Lhs, Rhs>;
 }

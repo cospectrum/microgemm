@@ -1,5 +1,9 @@
+use crate::kernel::Multiply;
 use crate::{Kernel, MatMut, MatRef, PackSizes};
+use generic_array::{sequence::GenericSequence, GenericArray};
 use num_traits::{One, Zero};
+
+type Product<L, R> = <L as Multiply<R>>::Output;
 
 #[allow(clippy::too_many_arguments)]
 pub fn gemm_with_kernel<T, K>(
@@ -17,7 +21,11 @@ pub fn gemm_with_kernel<T, K>(
 {
     pack_sizes.check(kernel);
     assert_eq!(pack_sizes.buf_len(kernel), packing_buf.len());
-    let (apack, bpack, dst_buf) = pack_sizes.split_buf(packing_buf);
+    let (apack, bpack, _) = pack_sizes.split_buf(packing_buf);
+
+    let zero = T::zero();
+    let mut dst_buf: GenericArray<T, Product<K::Mr, K::Nr>> = GenericArray::generate(|_| zero);
+    let dst_buf = dst_buf.as_mut_slice();
 
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());

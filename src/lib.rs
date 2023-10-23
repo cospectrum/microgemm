@@ -27,6 +27,6 @@ pub use generic_array::typenum;
 
 pub use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
-pub use mat::*;
+pub use mat::{Layout, MatMut, MatRef};
 pub use num_traits::{One, Zero};
 pub use packing::PackSizes;
