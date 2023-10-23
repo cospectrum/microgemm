@@ -1,5 +1,10 @@
 use crate::{gemm_with_kernel, Layout, MatMut, MatRef, PackSizes};
-use core::ops::Range;
+use core::ops::{Mul, Range};
+
+use generic_array::{
+    typenum::{Prod, Unsigned},
+    ArrayLength,
+};
 use num_traits::{One, Zero};
 
 pub trait Kernel
@@ -8,8 +13,11 @@ where
     Self::Scalar: Copy + Zero + One,
 {
     type Scalar;
-    const MR: usize;
-    const NR: usize;
+    type Mr: ArrayLength + Multiply<Self::Nr>;
+    type Nr: ArrayLength;
+
+    const MR: usize = Self::Mr::USIZE;
+    const NR: usize = Self::Nr::USIZE;
 
     fn microkernel(
         &self,
@@ -80,4 +88,16 @@ where
     fn nr(&self) -> usize {
         Self::NR
     }
+}
+
+pub trait Multiply<Rhs> {
+    type Output: ArrayLength;
+}
+
+impl<Lhs, Rhs> Multiply<Rhs> for Lhs
+where
+    Lhs: Mul<Rhs>,
+    Prod<Lhs, Rhs>: ArrayLength,
+{
+    type Output = Prod<Lhs, Rhs>;
 }

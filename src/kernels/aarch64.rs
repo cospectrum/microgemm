@@ -1,4 +1,4 @@
-use crate::{Kernel, MatMut, MatRef};
+use crate::{typenum::U4, Kernel, MatMut, MatRef};
 use core::arch::aarch64::{
     vaddq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
 };
@@ -19,9 +19,8 @@ impl<T> Aarch64Kernel<T> {
 
 impl Kernel for Aarch64Kernel<f32> {
     type Scalar = f32;
-
-    const MR: usize = 4;
-    const NR: usize = 4;
+    type Mr = U4;
+    type Nr = U4;
 
     fn microkernel(
         &self,

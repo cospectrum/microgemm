@@ -18,3 +18,10 @@ dependencies = [
     "build-wasm32",
     "build-thumbv7em-none-eabihf",
 ]
+
+[tasks.example-no-alloc]
+command = "cargo"
+args = ["run", "--example", "no_alloc"]
+
+[tasks.examples]
+dependencies = ["example-no-alloc"]

@@ -76,11 +76,9 @@ pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     let kc = rng.gen_range(1..k + 20);
     let pack_sizes = PackSizes { mc, kc, nc };
 
-    let buf1_len = pack_sizes.buf_len(kernel1);
-    let buf2_len = pack_sizes.buf_len(kernel2);
     let fill = scalar();
-    let mut buf1 = vec![fill; buf1_len];
-    let mut buf2 = vec![fill; buf2_len];
+    let mut buf1 = vec![fill; pack_sizes.buf_len()];
+    let mut buf2 = vec![fill; pack_sizes.buf_len()];
 
     let alpha = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
     let beta = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
@@ -109,8 +107,8 @@ where
 {
     type Scalar = T;
 
-    const MR: usize = 0;
-    const NR: usize = 0;
+    type Mr = crate::typenum::U0;
+    type Nr = crate::typenum::U0;
 
     fn microkernel(&self, _: T, _: &MatRef<T>, _: &MatRef<T>, _: T, _: &mut MatMut<T>) {
         unreachable!()

@@ -1,12 +1,11 @@
-use microgemm::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
+use microgemm::{typenum::U5, utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
 
 struct TestKernel;
 
 impl Kernel for TestKernel {
     type Scalar = i32;
-
-    const MR: usize = 5;
-    const NR: usize = 5;
+    type Mr = U5;
+    type Nr = U5;
 
     fn microkernel(
         &self,
@@ -61,8 +60,7 @@ fn gemm_sample_one() {
     let beta = -3;
 
     let pack_sizes = PackSizes {mc: TestKernel::MR, kc: 2, nc: TestKernel::NR };
-    let buf_len = pack_sizes.buf_len::<i32, TestKernel>(&kernel);
-    let mut buf = vec![-2; buf_len];
+    let mut buf = vec![-2; pack_sizes.buf_len()];
 
     kernel.gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut(), &pack_sizes, &mut buf);
     naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, expect.as_mut());

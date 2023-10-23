@@ -35,3 +35,10 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      - id: examples
+        name: examples
+        entry: cargo make examples
+        language: system
+        pass_filenames: false
+        always_run: true

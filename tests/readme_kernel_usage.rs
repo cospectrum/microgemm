@@ -12,8 +12,7 @@ fn main() {
         kc: 380,
         nc: 10 * kernel.nr(), // NC must be divisible by NR
     };
-    let buf_len = pack_sizes.buf_len(&kernel);
-    let mut buf = vec![0.0; buf_len];
+    let mut buf = vec![0.0; pack_sizes.buf_len()];
 
     let m = 100;
     let k = 380;

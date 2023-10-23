@@ -23,8 +23,10 @@ pub(crate) mod packing;
 pub mod kernels;
 pub mod utils;
 
+pub use generic_array::typenum;
+pub use num_traits::{One, Zero};
+
 pub use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
-pub use mat::*;
-pub use num_traits::{One, Zero};
+pub use mat::{Layout, MatMut, MatRef};
 pub use packing::PackSizes;

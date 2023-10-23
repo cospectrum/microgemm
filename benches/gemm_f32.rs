@@ -45,7 +45,7 @@ fn bench_kernel_with(
 
     let alpha = black_box(1.0);
     let beta = black_box(-1.0);
-    let mut buf = black_box(vec![0f32; pack_sizes.buf_len(kernel)]);
+    let mut buf = black_box(vec![0f32; pack_sizes.buf_len()]);
 
     let mut f = || {
         kernel.gemm(alpha, &a, &b, beta, &mut c, pack_sizes, &mut buf);
