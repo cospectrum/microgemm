@@ -2,18 +2,22 @@
 
 General matrix multiplication with custom configuration in Rust.
 
-## Install
+## Installation
 
-```sh
-cargo add microgemm
+To use the latest version from git, add this to your `Cargo.toml`:
+```toml
+[dependencies]
+microgemm = { git = "https://github.com/cospectrum/microgemm.git" }
 ```
+
+The **MSRV** is `1.65.0`
 
 ## Usage
 
 The `Kernel` trait is the main abstraction of microgemm.
 You can implement it yourself or use kernels that are already provided out of the box.
 
-### Kernel Usage
+### gemm
 
 ```rs
 use microgemm as mg;
@@ -29,11 +33,9 @@ fn main() {
         kc: 380,
         nc: 10 * kernel.nr(), // NC must be divisible by NR
     };
-    let mut buf = vec![0.0; pack_sizes.buf_len()];
+    let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
 
-    let m = 100;
-    let k = 380;
-    let n = 250;
+    let (m, k, n) = (100, 380, 250);
 
     let a = vec![2.0; m * k];
     let b = vec![3.0; k * n];
@@ -47,10 +49,17 @@ fn main() {
     let beta = -3.0;
 
     // c <- alpha a b + beta c
-    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
+    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }
 ```
+
+### Implemented Kernels
+
+| Name | Scalar Types | Target |
+| ---- | ------------ | ------ |
+| GenericNxNKernel <br> (N = 2, 4, ..., 32) | T: Copy + Zero + One + Mul<Output = T> + Add<Output = T> | Any |
+| NeonKernel | f32 | AArch64 and target feature neon |
 
 ### Custom Kernel Implementation
 
@@ -73,11 +82,17 @@ impl Kernel for CustomKernel {
         beta: f64,
         dst: &mut MatMut<f64>,
     ) {
-        assert_eq!(lhs.row_stride(), 1); // lhs is col-major by default
-        assert_eq!(rhs.col_stride(), 1); // rhs is row-major by default
+        // lhs is col-major by default
+        assert_eq!(lhs.row_stride(), 1);
         assert_eq!(lhs.nrows(), Self::MR);
+        // rhs is row-major by default
+        assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
+
         // your microkernel implementation...
     }
 }
 ```
+
+## License
+Licensed under either of [Apache License, Version 2.0](LICENSE-APACHE) or [MIT license](LICENSE-MIT) at your option.

@@ -5,11 +5,11 @@ use core::arch::aarch64::{
 use core::marker::PhantomData;
 
 #[derive(Debug, Clone, Copy, Default)]
-pub struct Aarch64Kernel<T> {
+pub struct NeonKernel<T> {
     marker: PhantomData<T>,
 }
 
-impl<T> Aarch64Kernel<T> {
+impl<T> NeonKernel<T> {
     pub const fn new() -> Self {
         Self {
             marker: PhantomData,
@@ -17,7 +17,7 @@ impl<T> Aarch64Kernel<T> {
     }
 }
 
-impl Kernel for Aarch64Kernel<f32> {
+impl Kernel for NeonKernel<f32> {
     type Scalar = f32;
     type Mr = U4;
     type Nr = U4;
@@ -143,8 +143,8 @@ mod tests {
     use rand::{thread_rng, Rng};
 
     #[test]
-    fn test_aarch64_naive_f32() {
-        let kernel = &Aarch64Kernel::<f32>::new();
+    fn test_neon_naive_f32() {
+        let kernel = &NeonKernel::<f32>::new();
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 80.0 * f32::EPSILON;
@@ -157,9 +157,9 @@ mod tests {
     }
 
     #[test]
-    fn test_aarch64_f32() {
+    fn test_neon_f32() {
         let generic_kernel = &Generic4x4Kernel::<f32>::new();
-        let aarch64_kernel = &Aarch64Kernel::<f32>::new();
+        let neon_kernel = &NeonKernel::<f32>::new();
 
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
@@ -172,7 +172,7 @@ mod tests {
             let nc = rng.gen_range(1..20) * 4;
             let scalar = || rng.gen_range(-1.0..1.0);
 
-            cmp_kernels_with_random_data(generic_kernel, aarch64_kernel, scalar, cmp, mc, nc);
+            cmp_kernels_with_random_data(generic_kernel, neon_kernel, scalar, cmp, mc, nc);
         }
     }
 }

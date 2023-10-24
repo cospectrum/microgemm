@@ -12,11 +12,9 @@ fn main() {
         kc: 380,
         nc: 10 * kernel.nr(), // NC must be divisible by NR
     };
-    let mut buf = vec![0.0; pack_sizes.buf_len()];
+    let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
 
-    let m = 100;
-    let k = 380;
-    let n = 250;
+    let (m, k, n) = (100, 380, 250);
 
     let a = vec![2.0; m * k];
     let b = vec![3.0; k * n];
@@ -30,6 +28,6 @@ fn main() {
     let beta = -3.0;
 
     // c <- alpha a b + beta c
-    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
+    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }

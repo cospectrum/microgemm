@@ -17,10 +17,13 @@ impl Kernel for CustomKernel {
         beta: f64,
         dst: &mut MatMut<f64>,
     ) {
-        assert_eq!(lhs.row_stride(), 1); // lhs is col-major by default
-        assert_eq!(rhs.col_stride(), 1); // rhs is row-major by default
+        // lhs is col-major by default
+        assert_eq!(lhs.row_stride(), 1);
         assert_eq!(lhs.nrows(), Self::MR);
+        // rhs is row-major by default
+        assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
+
         // your microkernel implementation...
     }
 }

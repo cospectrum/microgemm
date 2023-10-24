@@ -1,10 +1,14 @@
-use microgemm::{typenum::U5, utils::naive_gemm, Kernel, Layout, MatMut, MatRef, PackSizes};
+use microgemm::{
+    typenum::{U4, U5},
+    utils::naive_gemm,
+    Kernel, Layout, MatMut, MatRef, PackSizes,
+};
 
 struct TestKernel;
 
 impl Kernel for TestKernel {
     type Scalar = i32;
-    type Mr = U5;
+    type Mr = U4;
     type Nr = U5;
 
     fn microkernel(
@@ -15,6 +19,8 @@ impl Kernel for TestKernel {
         beta: i32,
         dst: &mut MatMut<i32>,
     ) {
+        assert_eq!(Self::MR, 4);
+        assert_eq!(Self::NR, 5);
         assert_eq!(lhs.nrows(), Self::MR);
         assert_eq!(rhs.ncols(), Self::NR);
         assert_eq!(dst.nrows(), Self::MR);
