@@ -184,7 +184,8 @@ Cargo.lock
 !.gitignore
 !.pre-commit-config.yaml
 !README.md
-!LICENSE
+!LICENSE-APACHE
+!LICENSE-MIT
 !Cargo.toml
 !Makefile.toml
 
