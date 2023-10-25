@@ -61,7 +61,7 @@ fn matrices<'a, T>(
 ) -> (MatRef<'a, T>, MatRef<'a, T>, MatMut<'a, T>) {
     let [m, k, n] = mkn;
     let a = MatRef::new(m, k, a, Layout::RowMajor);
-    let b = MatRef::new(k, n, b, Layout::ColumnMajor);
+    let b = MatRef::new(k, n, b, Layout::ColMajor);
     let c = MatMut::new(m, n, c, Layout::RowMajor);
     (a, b, c)
 }

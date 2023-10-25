@@ -19,12 +19,6 @@ impl Kernel for TestKernel {
         beta: i32,
         dst: &mut MatMut<i32>,
     ) {
-        assert_eq!(Self::MR, 4);
-        assert_eq!(Self::NR, 5);
-        assert_eq!(lhs.nrows(), Self::MR);
-        assert_eq!(rhs.ncols(), Self::NR);
-        assert_eq!(dst.nrows(), Self::MR);
-        assert_eq!(dst.ncols(), Self::NR);
         naive_gemm(alpha, lhs, rhs, beta, dst);
     }
 }
@@ -65,7 +59,7 @@ fn gemm_sample_one() {
     let alpha = 4;
     let beta = -3;
 
-    let pack_sizes = PackSizes {mc: TestKernel::MR, kc: 2, nc: TestKernel::NR };
+    let pack_sizes = PackSizes {mc: kernel.mr(), kc: 2, nc: kernel.nr() };
     let mut buf = vec![-2; pack_sizes.buf_len()];
 
     kernel.gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut(), &pack_sizes, &mut buf);

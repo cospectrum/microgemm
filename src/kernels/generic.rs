@@ -5,19 +5,6 @@ use crate::{
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 
-#[derive(Debug, Clone, Copy, Default)]
-pub struct GenericSquareKernel<T, const DIM: usize> {
-    marker: PhantomData<T>,
-}
-
-impl<T, const DIM: usize> GenericSquareKernel<T, DIM> {
-    pub const fn new() -> Self {
-        Self {
-            marker: PhantomData,
-        }
-    }
-}
-
 fn loop_micropanels<T, const DIM: usize>(lhs: &[T], rhs: &[T], cols: &mut [T])
 where
     T: Copy + Add<Output = T> + Mul<Output = T>,
@@ -52,8 +39,16 @@ where
 }
 
 macro_rules! impl_generic_square_kernel {
-    ($dim:literal, $num:ty) => {
-        impl<T> Kernel for GenericSquareKernel<T, $dim>
+    ($struct:ident, $constant:literal, $num:ty) => {
+        #[derive(Debug, Clone, Copy, Default)]
+        pub struct $struct<T>(PhantomData<T>);
+
+        impl<T> $struct<T> {
+            pub const fn new() -> Self {
+                Self(PhantomData)
+            }
+        }
+        impl<T> Kernel for $struct<T>
         where
             T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
         {
@@ -73,7 +68,7 @@ macro_rules! impl_generic_square_kernel {
                 assert_eq!(dst.ncols(), Self::NR);
                 assert_eq!(dst.row_stride(), 1);
 
-                const DIM: usize = $dim;
+                const DIM: usize = $constant;
                 let mut cols = [T::zero(); DIM * DIM];
                 loop_micropanels::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
                 write_cols_to_colmajor::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
@@ -82,8 +77,51 @@ macro_rules! impl_generic_square_kernel {
     };
 }
 
-impl_generic_square_kernel!(2, U2);
-impl_generic_square_kernel!(4, U4);
-impl_generic_square_kernel!(8, U8);
-impl_generic_square_kernel!(16, U16);
-impl_generic_square_kernel!(32, U32);
+impl_generic_square_kernel!(Generic2x2Kernel, 2, U2);
+impl_generic_square_kernel!(Generic4x4Kernel, 4, U4);
+impl_generic_square_kernel!(Generic8x8Kernel, 8, U8);
+impl_generic_square_kernel!(Generic16x16Kernel, 16, U16);
+impl_generic_square_kernel!(Generic32x32Kernel, 32, U32);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{utils::*, Kernel};
+    use rand::{thread_rng, Rng};
+
+    #[test]
+    fn test_generic_kernels_i32() {
+        test_kernel_i32(Generic2x2Kernel::new());
+        test_kernel_i32(Generic4x4Kernel::new());
+        test_kernel_i32(Generic8x8Kernel::new());
+        test_kernel_i32(Generic16x16Kernel::new());
+        test_kernel_i32(Generic32x32Kernel::new());
+    }
+
+    #[test]
+    fn test_generic_kernels_f32() {
+        test_kernel_f32(Generic2x2Kernel::new());
+        test_kernel_f32(Generic4x4Kernel::new());
+        test_kernel_f32(Generic8x8Kernel::new());
+        test_kernel_f32(Generic16x16Kernel::new());
+        test_kernel_i32(Generic32x32Kernel::new());
+    }
+
+    fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
+        let cmp = |expect: &[f32], got: &[f32]| {
+            let eps = 75.0 * f32::EPSILON;
+            assert_relative_eq!(expect, got, epsilon = eps);
+        };
+        let mut rng = thread_rng();
+
+        for _ in 0..20 {
+            let scalar = || rng.gen_range(-1.0..1.0);
+            random_kernel_test(&kernel, scalar, cmp);
+        }
+    }
+    fn test_kernel_i32(kernel: impl Kernel<Scalar = i32>) {
+        for _ in 0..20 {
+            test_kernel_with_random_i32(&kernel);
+        }
+    }
+}

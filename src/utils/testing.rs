@@ -61,7 +61,7 @@ pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
     let k = rng.gen_range(1..100);
     let n = rng.gen_range(1..100);
 
-    let random_layout = || toss_a_coin(Layout::RowMajor, Layout::ColumnMajor);
+    let random_layout = || toss_a_coin(Layout::RowMajor, Layout::ColMajor);
 
     let a = (0..m * k).map(|_| scalar()).collect::<Vec<T>>();
     let b = (0..k * n).map(|_| scalar()).collect::<Vec<T>>();

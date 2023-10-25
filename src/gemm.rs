@@ -17,7 +17,7 @@ pub fn gemm_with_kernel<T, K>(
     packing_buf: &mut [T],
 ) where
     T: Copy + Zero + One,
-    K: Kernel<Scalar = T>,
+    K: Kernel<Scalar = T> + ?Sized,
 {
     pack_sizes.check(kernel);
     assert_eq!(pack_sizes.buf_len(), packing_buf.len());
@@ -78,13 +78,17 @@ pub fn gemm_with_kernel<T, K>(
 mod tests {
     use super::*;
     use crate::std_prelude::*;
-    use crate::{typenum::U5, utils::naive_gemm, Layout};
+    use crate::{
+        typenum::{U4, U5},
+        utils::naive_gemm,
+        Layout,
+    };
 
     struct TestKernel;
 
     impl Kernel for TestKernel {
         type Scalar = i32;
-        type Mr = U5;
+        type Mr = U4;
         type Nr = U5;
 
         fn microkernel(
@@ -95,8 +99,13 @@ mod tests {
             beta: i32,
             dst: &mut MatMut<i32>,
         ) {
+            assert_eq!(lhs.row_stride(), 1);
             assert_eq!(lhs.nrows(), Self::MR);
+
+            assert_eq!(rhs.col_stride(), 1);
             assert_eq!(rhs.ncols(), Self::NR);
+
+            assert_eq!(dst.row_stride(), 1);
             assert_eq!(dst.nrows(), Self::MR);
             assert_eq!(dst.ncols(), Self::NR);
             naive_gemm(alpha, lhs, rhs, beta, dst);

@@ -16,7 +16,7 @@ impl PackSizes {
     pub(crate) fn check<T, K>(&self, _: &K)
     where
         T: One + Zero + Copy,
-        K: Kernel<Scalar = T>,
+        K: Kernel<Scalar = T> + ?Sized,
     {
         let mr = K::MR;
         let nr = K::NR;
@@ -37,7 +37,8 @@ impl AsRef<PackSizes> for PackSizes {
     }
 }
 
-pub(crate) fn pack_a<T, K>(
+pub(crate) fn pack_a<T>(
+    mr: usize,
     pack_sizes: &PackSizes,
     apack: &mut [T],
     a: &MatRef<T>,
@@ -45,11 +46,9 @@ pub(crate) fn pack_a<T, K>(
     a_cols: Range<usize>,
 ) where
     T: One + Zero + Copy,
-    K: Kernel<Scalar = T>,
 {
     let mc = pack_sizes.mc;
     let kc = pack_sizes.kc;
-    let mr = K::MR;
     debug_assert_eq!(a_rows.len(), mc);
     debug_assert_eq!(a_cols.len(), kc);
     debug_assert_eq!(apack.len(), mc * kc);
@@ -63,7 +62,8 @@ pub(crate) fn pack_a<T, K>(
     }
 }
 
-pub(crate) fn pack_b<T, K>(
+pub(crate) fn pack_b<T>(
+    nr: usize,
     pack_sizes: &PackSizes,
     bpack: &mut [T],
     b: &MatRef<T>,
@@ -71,11 +71,9 @@ pub(crate) fn pack_b<T, K>(
     b_cols: Range<usize>,
 ) where
     T: One + Zero + Copy,
-    K: Kernel<Scalar = T>,
 {
     let kc = pack_sizes.kc;
     let nc = pack_sizes.nc;
-    let nr = K::NR;
     debug_assert_eq!(b_rows.len(), kc);
     debug_assert_eq!(b_cols.len(), nc);
     debug_assert_eq!(bpack.len(), kc * nc);
@@ -123,7 +121,7 @@ where
     let nrows = rows.len();
     let ncols = cols.len();
     assert_eq!(block_buf.len(), nrows * ncols);
-    let mut block = MatMut::new(nrows, ncols, block_buf, Layout::ColumnMajor);
+    let mut block = MatMut::new(nrows, ncols, block_buf, Layout::ColMajor);
 
     for (j, col) in cols.enumerate() {
         for (i, row) in rows.clone().enumerate() {

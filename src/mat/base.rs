@@ -2,16 +2,13 @@ use crate::Layout;
 use core::marker::PhantomData;
 use num_traits::Zero;
 
-pub type MatRef<'a, T> = MatBase<&'a [T], T>;
-pub type MatMut<'a, T> = MatBase<&'a mut [T], T>;
-
 #[derive(Debug, Clone)]
 pub struct MatBase<V, T> {
-    nrows: usize,
-    ncols: usize,
-    values: V,
-    row_stride: usize,
-    col_stride: usize,
+    pub(super) nrows: usize,
+    pub(super) ncols: usize,
+    pub(super) values: V,
+    pub(super) row_stride: usize,
+    pub(super) col_stride: usize,
     marker: PhantomData<T>,
 }
 
@@ -69,7 +66,7 @@ where
     pub(crate) fn new_unchecked(nrows: usize, ncols: usize, values: V, layout: Layout) -> Self {
         let (row_stride, col_stride) = match layout {
             Layout::RowMajor => (ncols, 1),
-            Layout::ColumnMajor => (1, nrows),
+            Layout::ColMajor => (1, nrows),
         };
         Self::from_parts(nrows, ncols, values, row_stride, col_stride)
     }
@@ -119,29 +116,5 @@ where
     pub fn get_mut(&mut self, row: usize, col: usize) -> &mut T {
         let idx = self.idx(row, col);
         &mut self.values.as_mut()[idx]
-    }
-}
-
-impl<'a, T> MatMut<'a, T> {
-    pub fn to_ref(&'a self) -> MatRef<'a, T> {
-        MatRef::from_parts(
-            self.nrows,
-            self.ncols,
-            self.values,
-            self.row_stride,
-            self.col_stride,
-        )
-    }
-}
-
-impl<'a, T> AsRef<MatRef<'a, T>> for MatRef<'a, T> {
-    fn as_ref(&self) -> &MatRef<'a, T> {
-        self
-    }
-}
-
-impl<'a, T> AsMut<MatMut<'a, T>> for MatMut<'a, T> {
-    fn as_mut(&mut self) -> &mut MatMut<'a, T> {
-        self
     }
 }

@@ -1,15 +1,32 @@
-mod base;
+mod layout;
 
-pub use base::{MatMut, MatRef};
+pub mod base;
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum Layout {
-    RowMajor,
-    ColumnMajor,
+pub use layout::Layout;
+
+pub type MatRef<'a, T> = base::MatBase<&'a [T], T>;
+pub type MatMut<'a, T> = base::MatBase<&'a mut [T], T>;
+
+impl<'a, T> MatMut<'a, T> {
+    pub fn to_ref(&'a self) -> MatRef<'a, T> {
+        MatRef::from_parts(
+            self.nrows,
+            self.ncols,
+            self.values,
+            self.row_stride,
+            self.col_stride,
+        )
+    }
 }
 
-impl AsRef<Layout> for Layout {
-    fn as_ref(&self) -> &Layout {
+impl<'a, T> AsRef<MatRef<'a, T>> for MatRef<'a, T> {
+    fn as_ref(&self) -> &MatRef<'a, T> {
+        self
+    }
+}
+
+impl<'a, T> AsMut<MatMut<'a, T>> for MatMut<'a, T> {
+    fn as_mut(&mut self) -> &mut MatMut<'a, T> {
         self
     }
 }

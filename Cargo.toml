@@ -2,8 +2,8 @@
 name = "microgemm"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.65.0"
 authors = ["cospectrum"]
+rust-version = "1.65.0"
 
 description = "General matrix multiplication with custom configuration in Rust"
 license = "MIT OR Apache-2.0"
@@ -12,8 +12,6 @@ repository = "https://github.com/cospectrum/microgemm"
 readme = "README.md"
 categories = ["science", "mathematics", "no-std", "no-std::no-alloc"]
 keywords = ["matrix", "linear-algebra"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 generic-array = { version = "1.0.0", default-features = false }

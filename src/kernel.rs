@@ -1,6 +1,5 @@
 use crate::{gemm_with_kernel, Layout, MatMut, MatRef, PackSizes};
 use core::ops::{Mul, Range};
-
 use generic_array::{
     typenum::{Prod, Unsigned},
     ArrayLength,
@@ -9,7 +8,6 @@ use num_traits::{One, Zero};
 
 pub trait Kernel
 where
-    Self: Sized,
     Self::Scalar: Copy + Zero + One,
 {
     type Scalar;
@@ -36,8 +34,8 @@ where
         a_rows: Range<usize>,
         a_cols: Range<usize>,
     ) -> Layout {
-        crate::packing::pack_a::<Self::Scalar, Self>(pack_sizes, apack, a, a_rows, a_cols);
-        Layout::ColumnMajor
+        crate::packing::pack_a::<Self::Scalar>(Self::MR, pack_sizes, apack, a, a_rows, a_cols);
+        Layout::ColMajor
     }
     fn pack_b(
         &self,
@@ -47,7 +45,7 @@ where
         b_rows: Range<usize>,
         b_cols: Range<usize>,
     ) -> Layout {
-        crate::packing::pack_b::<Self::Scalar, Self>(pack_sizes, bpack, b, b_rows, b_cols);
+        crate::packing::pack_b::<Self::Scalar>(Self::NR, pack_sizes, bpack, b, b_rows, b_cols);
         Layout::RowMajor
     }
     fn copy_from_c<'dst>(
@@ -67,7 +65,11 @@ where
         c_cols: Range<usize>,
         from: &MatRef<Self::Scalar>,
     ) {
-        crate::copying::copy(from, c, c_rows, c_cols);
+        if c.is_row_major() {
+            crate::copying::copy_row_major_friendly(from, c, c_rows, c_cols);
+        } else {
+            crate::copying::copy_col_major_friendly(from, c, c_rows, c_cols);
+        }
     }
     #[allow(clippy::too_many_arguments)]
     fn gemm(
@@ -78,9 +80,9 @@ where
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
         pack_sizes: &PackSizes,
-        buf: &mut [Self::Scalar],
+        packing_buf: &mut [Self::Scalar],
     ) {
-        gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes, buf);
+        gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes, packing_buf);
     }
     fn mr(&self) -> usize {
         Self::MR

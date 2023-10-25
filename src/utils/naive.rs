@@ -53,7 +53,7 @@ mod tests {
         assert_eq!(c.as_slice(), expect);
 
         let mut c = [-1; 4];
-        let mut c = MatMut::new(2, 2, c.as_mut(), Layout::ColumnMajor);
+        let mut c = MatMut::new(2, 2, c.as_mut(), Layout::ColMajor);
         let expect = [
             140, 320,
             146, 335,
@@ -88,7 +88,7 @@ mod tests {
         ];
 
         let a = MatRef::new(2, 3, a.as_ref(), Layout::RowMajor);
-        let b = MatRef::new(3, 2, b.as_ref(), Layout::ColumnMajor);
+        let b = MatRef::new(3, 2, b.as_ref(), Layout::ColMajor);
         let mut c = MatMut::new(2, 2, c.as_mut(), Layout::RowMajor);
 
         naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut());
