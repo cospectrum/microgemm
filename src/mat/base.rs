@@ -47,12 +47,6 @@ impl<V, T> MatBase<V, T> {
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
         row * self.row_stride + col * self.col_stride
     }
-    pub(crate) fn is_row_major(&self) -> bool {
-        !self.is_col_major()
-    }
-    pub(crate) fn is_col_major(&self) -> bool {
-        self.row_stride < self.col_stride
-    }
 }
 
 impl<V, T> MatBase<V, T>

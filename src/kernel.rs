@@ -34,8 +34,7 @@ where
         a_rows: Range<usize>,
         a_cols: Range<usize>,
     ) -> Layout {
-        crate::packing::pack_a::<Self::Scalar>(Self::MR, pack_sizes, apack, a, a_rows, a_cols);
-        Layout::ColMajor
+        crate::packing::pack_a::<Self::Scalar>(Self::MR, pack_sizes, apack, a, a_rows, a_cols)
     }
     fn pack_b(
         &self,
@@ -45,31 +44,26 @@ where
         b_rows: Range<usize>,
         b_cols: Range<usize>,
     ) -> Layout {
-        crate::packing::pack_b::<Self::Scalar>(Self::NR, pack_sizes, bpack, b, b_rows, b_cols);
-        Layout::RowMajor
+        crate::packing::pack_b::<Self::Scalar>(Self::NR, pack_sizes, bpack, b, b_rows, b_cols)
     }
-    fn copy_from_c<'dst>(
+    fn registers_from_c(
         &self,
         c: &MatRef<Self::Scalar>,
         c_rows: Range<usize>,
         c_cols: Range<usize>,
-        to: &'dst mut [Self::Scalar],
-    ) -> MatMut<'dst, Self::Scalar> {
-        let dst = crate::packing::col_major_block(to, c, c_rows, c_cols);
-        dst
+        dst: &mut [Self::Scalar],
+    ) -> Layout {
+        crate::packing::block::ColMajor(dst).init_from(c, c_rows, c_cols);
+        Layout::ColMajor
     }
-    fn copy_to_c(
+    fn registers_to_c(
         &self,
         c: &mut MatMut<Self::Scalar>,
         c_rows: Range<usize>,
         c_cols: Range<usize>,
-        from: &MatRef<Self::Scalar>,
+        from: &[Self::Scalar],
     ) {
-        if c.is_row_major() {
-            crate::copying::copy_row_major_friendly(from, c, c_rows, c_cols);
-        } else {
-            crate::copying::copy_col_major_friendly(from, c, c_rows, c_cols);
-        }
+        crate::packing::block::ColMajor(from).copy_to(c, c_rows, c_cols);
     }
     #[allow(clippy::too_many_arguments)]
     fn gemm(

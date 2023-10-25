@@ -1,134 +1,62 @@
-use crate::{Kernel, Layout, MatMut, MatRef};
+use crate::{MatMut, MatRef, Zero};
 use core::ops::Range;
-use num_traits::{One, Zero};
 
-#[derive(Debug, Clone)]
-pub struct PackSizes {
-    pub mc: usize,
-    pub kc: usize,
-    pub nc: usize,
-}
+pub(crate) struct ColMajor<V>(pub(crate) V);
 
-impl PackSizes {
-    pub const fn buf_len(&self) -> usize {
-        self.mc * self.kc + self.kc * self.nc
-    }
-    pub(crate) fn check<T, K>(&self, _: &K)
-    where
-        T: One + Zero + Copy,
-        K: Kernel<Scalar = T> + ?Sized,
-    {
-        let mr = K::MR;
-        let nr = K::NR;
-        assert!(mr <= self.mc);
-        assert!(nr <= self.nc);
-        assert_eq!(self.mc % mr, 0);
-        assert_eq!(self.nc % nr, 0);
-    }
-    pub(crate) fn split_buf<'buf, T>(&self, buf: &'buf mut [T]) -> (&'buf mut [T], &'buf mut [T]) {
-        let (apack, bpack) = buf.split_at_mut(self.mc * self.kc);
-        (apack, bpack)
-    }
-}
-
-impl AsRef<PackSizes> for PackSizes {
-    fn as_ref(&self) -> &PackSizes {
-        self
-    }
-}
-
-pub(crate) fn pack_a<T>(
-    mr: usize,
-    pack_sizes: &PackSizes,
-    apack: &mut [T],
-    a: &MatRef<T>,
-    a_rows: Range<usize>,
-    a_cols: Range<usize>,
-) where
-    T: One + Zero + Copy,
-{
-    let mc = pack_sizes.mc;
-    let kc = pack_sizes.kc;
-    debug_assert_eq!(a_rows.len(), mc);
-    debug_assert_eq!(a_cols.len(), kc);
-    debug_assert_eq!(apack.len(), mc * kc);
-    debug_assert_eq!(mc % mr, 0);
-
-    let start = a_rows.start;
-    for i in 0..mc / mr {
-        let buf = &mut apack[mr * kc * i..mr * kc * (i + 1)];
-        let rows = start + mr * i..start + mr * (i + 1);
-        col_major_block(buf, a, rows, a_cols.clone());
-    }
-}
-
-pub(crate) fn pack_b<T>(
-    nr: usize,
-    pack_sizes: &PackSizes,
-    bpack: &mut [T],
-    b: &MatRef<T>,
-    b_rows: Range<usize>,
-    b_cols: Range<usize>,
-) where
-    T: One + Zero + Copy,
-{
-    let kc = pack_sizes.kc;
-    let nc = pack_sizes.nc;
-    debug_assert_eq!(b_rows.len(), kc);
-    debug_assert_eq!(b_cols.len(), nc);
-    debug_assert_eq!(bpack.len(), kc * nc);
-    debug_assert_eq!(nc % nr, 0);
-
-    let start = b_cols.start;
-    for i in 0..nc / nr {
-        let buf = &mut bpack[kc * nr * i..kc * nr * (i + 1)];
-        let cols = start + nr * i..start + nr * (i + 1);
-        row_major_block(buf, b, b_rows.clone(), cols);
-    }
-}
-
-pub(crate) fn row_major_block<'block, T>(
-    block_buf: &'block mut [T],
-    from: &MatRef<T>,
-    rows: Range<usize>,
-    cols: Range<usize>,
-) -> MatMut<'block, T>
+impl<T> ColMajor<&[T]>
 where
     T: Copy + Zero,
 {
-    let nrows = rows.len();
-    let ncols = cols.len();
-    assert_eq!(block_buf.len(), nrows * ncols);
-    let mut block = MatMut::new(nrows, ncols, block_buf, Layout::RowMajor);
-
-    for (i, row) in rows.enumerate() {
-        for (j, col) in cols.clone().enumerate() {
-            *block.get_mut(i, j) = from.get_or_zero(row, col);
+    pub fn copy_to(&self, mat: &mut MatMut<T>, rows: Range<usize>, cols: Range<usize>) {
+        let buf = self.0;
+        assert_eq!(buf.len(), rows.len() * cols.len());
+        let mut it = buf.iter();
+        for col in cols {
+            for row in rows.start..rows.end {
+                let src = it.next().unwrap();
+                if row < mat.nrows() && col < mat.ncols() {
+                    let dst = mat.get_mut(row, col);
+                    *dst = *src;
+                }
+            }
         }
     }
-    block
 }
 
-pub(crate) fn col_major_block<'block, T>(
-    block_buf: &'block mut [T],
-    from: &MatRef<T>,
-    rows: Range<usize>,
-    cols: Range<usize>,
-) -> MatMut<'block, T>
+impl<T> ColMajor<&mut [T]>
 where
     T: Copy + Zero,
 {
-    let nrows = rows.len();
-    let ncols = cols.len();
-    assert_eq!(block_buf.len(), nrows * ncols);
-    let mut block = MatMut::new(nrows, ncols, block_buf, Layout::ColMajor);
-
-    for (j, col) in cols.enumerate() {
-        for (i, row) in rows.clone().enumerate() {
-            *block.get_mut(i, j) = from.get_or_zero(row, col);
+    pub fn init_from(&mut self, mat: &MatRef<T>, rows: Range<usize>, cols: Range<usize>) {
+        let buf = &mut self.0;
+        assert_eq!(buf.len(), rows.len() * cols.len());
+        let mut it = buf.iter_mut();
+        for col in cols {
+            for row in rows.start..rows.end {
+                let dst = it.next().unwrap();
+                *dst = mat.get_or_zero(row, col);
+            }
         }
     }
-    block
+}
+
+pub(crate) struct RowMajor<V>(pub(crate) V);
+
+impl<T> RowMajor<&mut [T]>
+where
+    T: Copy + Zero,
+{
+    pub fn init_from(&mut self, mat: &MatRef<T>, rows: Range<usize>, cols: Range<usize>) {
+        let buf = &mut self.0;
+        assert_eq!(buf.len(), rows.len() * cols.len());
+        let mut it = buf.iter_mut();
+        for row in rows {
+            for col in cols.start..cols.end {
+                let dst = it.next().unwrap();
+                *dst = mat.get_or_zero(row, col);
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -147,7 +75,7 @@ mod tests {
 
         let block = |rows: Range<usize>, cols: Range<usize>| {
             let mut buf = vec![-1; rows.len() * cols.len()];
-            row_major_block(&mut buf, &a, rows, cols);
+            RowMajor(buf.as_mut_slice()).init_from(&a, rows, cols);
             buf
         };
 
@@ -223,7 +151,7 @@ mod tests {
 
         let block = |rows: Range<usize>, cols: Range<usize>| {
             let mut buf = vec![-1; rows.len() * cols.len()];
-            col_major_block(&mut buf, &b, rows, cols);
+            ColMajor(buf.as_mut_slice()).init_from(&b, rows, cols);
             buf
         };
 

@@ -45,12 +45,12 @@ class Cache:
     def kib(self) -> KiB:
         bs = self.bytes()
         assert bs % 1024 == 0
-        return bs * 1024
+        return bs // 1024
 
-    def mib(self) -> int:
+    def mib(self) -> MiB:
         kib = self.kib()
         assert kib % 1024 == 0
-        return kib * 1024
+        return kib // 1024
 
     @classmethod
     def from_bytes(cls, b: Bytes) -> "Cache":

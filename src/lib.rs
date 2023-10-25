@@ -130,7 +130,6 @@ mod std_prelude {
 mod gemm;
 mod kernel;
 
-pub(crate) mod copying;
 pub(crate) mod packing;
 
 pub mod kernels;

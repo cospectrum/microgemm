@@ -58,15 +58,16 @@ pub fn gemm_with_kernel<T, K>(
                         let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-
-                        let mut dst = kernel.copy_from_c(
+                        let dst_layout = kernel.registers_from_c(
                             &c.to_ref(),
                             dst_rows.clone(),
                             dst_cols.clone(),
                             dst_buf,
                         );
+                        let mut dst =
+                            MatMut::new(dst_rows.len(), dst_cols.len(), dst_buf, dst_layout);
                         kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
-                        kernel.copy_to_c(c, dst_rows, dst_cols.clone(), &dst.to_ref());
+                        kernel.registers_to_c(c, dst_rows, dst_cols.clone(), dst_buf);
                     }
                 }
             }
