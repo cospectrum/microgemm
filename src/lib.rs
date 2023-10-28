@@ -8,7 +8,7 @@ The implementation is based on the BLIS microkernel approach.
 ## Usage
 
 The [`Kernel`] trait is the main abstraction of microgemm.
-You can implement it yourself or use kernels that are already provided out of the box ([`kernels`]).
+You can implement it yourself or use [`kernels`] that are already provided out of the box.
 
 [`Kernel`]: crate::Kernel
 [`kernels`]: crate::kernels
@@ -114,11 +114,11 @@ mod gemm;
 mod kernel;
 
 pub(crate) mod packing;
+#[cfg(test)]
+pub(crate) mod utils;
 
 pub mod kernels;
 pub mod mat;
-#[cfg(test)]
-pub mod utils;
 
 pub use generic_array::typenum;
 pub use num_traits::{One, Zero};

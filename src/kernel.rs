@@ -35,10 +35,19 @@ where
         b: &MatRef<Self::Scalar>,
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
-        pack_sizes: &PackSizes,
-        packing_buf: &mut [Self::Scalar],
+        pack_sizes: impl AsRef<PackSizes>,
+        mut packing_buf: impl AsMut<[Self::Scalar]>,
     ) {
-        gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes, packing_buf);
+        gemm_with_kernel(
+            self,
+            alpha,
+            a,
+            b,
+            beta,
+            c,
+            pack_sizes.as_ref(),
+            packing_buf.as_mut(),
+        );
     }
     fn mr(&self) -> usize {
         Self::MR
