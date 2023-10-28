@@ -1,4 +1,4 @@
-# wasm32_simd128 example
+# wasm_simd128 example
 
 ## Build
 

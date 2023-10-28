@@ -6,7 +6,8 @@ use num_traits::{One, Zero};
 type Product<L, R> = <L as Multiply<R>>::Output;
 
 #[allow(clippy::too_many_arguments)]
-pub fn gemm_with_kernel<T, K>(
+#[inline]
+pub(crate) fn gemm_with_kernel<T, K>(
     kernel: &K,
     alpha: T,
     a: &MatRef<T>,
@@ -60,16 +61,16 @@ pub fn gemm_with_kernel<T, K>(
                         let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-                        let dst_layout = kernel.registers_from_c(
+                        let dst_layout = crate::packing::registers_from_c(
+                            dst_buf,
                             &c.to_ref(),
                             dst_rows.clone(),
                             dst_cols.clone(),
-                            dst_buf,
                         );
                         let mut dst =
                             MatMut::new(dst_rows.len(), dst_cols.len(), dst_buf, dst_layout);
                         kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
-                        kernel.registers_to_c(c, dst_rows, dst_cols.clone(), dst_buf);
+                        crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
                 }
             }

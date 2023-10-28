@@ -1,5 +1,5 @@
-use crate::{gemm_with_kernel, Layout, MatMut, MatRef, PackSizes};
-use core::ops::{Mul, Range};
+use crate::{gemm_with_kernel, MatMut, MatRef, PackSizes};
+use core::ops::Mul;
 use generic_array::{
     typenum::{Prod, Unsigned},
     ArrayLength,
@@ -26,25 +26,7 @@ where
         dst: &mut MatMut<Self::Scalar>,
     );
 
-    fn registers_from_c(
-        &self,
-        c: &MatRef<Self::Scalar>,
-        c_rows: Range<usize>,
-        c_cols: Range<usize>,
-        registers: &mut [Self::Scalar],
-    ) -> Layout {
-        crate::packing::block::ColMajor(registers).init_from(c, c_rows, c_cols);
-        Layout::ColMajor
-    }
-    fn registers_to_c(
-        &self,
-        c: &mut MatMut<Self::Scalar>,
-        c_rows: Range<usize>,
-        c_cols: Range<usize>,
-        registers: &[Self::Scalar],
-    ) {
-        crate::packing::block::ColMajor(registers).copy_to(c, c_rows, c_cols);
-    }
+    #[inline]
     #[allow(clippy::too_many_arguments)]
     fn gemm(
         &self,

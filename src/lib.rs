@@ -3,6 +3,8 @@
 
 General matrix multiplication with custom configuration in Rust.
 
+The implementation is based on the BLIS microkernel approach.
+
 ## Usage
 
 The `Kernel` trait is the main abstraction of microgemm.
@@ -118,7 +120,7 @@ pub mod utils;
 pub use generic_array::typenum;
 pub use num_traits::{One, Zero};
 
-pub use gemm::gemm_with_kernel;
+pub(crate) use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
 pub use mat::{Layout, MatMut, MatRef};
 pub use packing::PackSizes;
