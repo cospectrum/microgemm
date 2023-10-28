@@ -30,7 +30,7 @@ fn main() {
 
     let pack_sizes = mg::PackSizes {
         mc: 5 * kernel.mr(), // MC must be divisible by MR
-        kc: 380,
+        kc: 190,
         nc: 10 * kernel.nr(), // NC must be divisible by NR
     };
     let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
@@ -95,6 +95,6 @@ impl Kernel for CustomKernel {
 ```
 
 ## License
-Licensed under either of [Apache License, Version 2.0](https://github.com/cospectrum/microgemm/blob/main/LICENSE-APACHE)
-or [MIT license](https://github.com/cospectrum/microgemm/blob/main/LICENSE-MIT) at your option.
+Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE)
+or [MIT license](./LICENSE-MIT) at your option.
 

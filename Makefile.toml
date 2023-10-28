@@ -16,11 +16,6 @@ args = ["target", "add", "thumbv7em-none-eabihf"]
 
 ############################################################
 
-[tasks.build-wasm32]
-command = "cargo"
-args = ["build", "--target", "wasm32-unknown-unknown"]
-dependencies = ["install-wasm32-unknown-unknown"]
-
 [tasks.--build-wasm32-simd128]
 env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
 command = "cargo"
@@ -30,6 +25,11 @@ dependencies = ["install-wasm32-unknown-unknown"]
 [tasks.build-wasm32-simd128]
 env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--build-wasm32-simd128"]
+
+[tasks.build-wasm32]
+command = "cargo"
+args = ["build", "--target", "wasm32-unknown-unknown"]
+dependencies = ["install-wasm32-unknown-unknown"]
 
 [tasks.build-x86_64-unknown]
 command = "cargo"
@@ -41,6 +41,17 @@ command = "cargo"
 args = ["build", "--target", "thumbv7em-none-eabihf"]
 dependencies = ["install-thumbv7em-none-eabihf"]
 
+[tasks.check-no-std]
+command = "cargo"
+args = [
+    "build",
+    "--manifest-path",
+    "check_no_std/Cargo.toml",
+    "--target",
+    "thumbv7em-none-eabihf",
+]
+dependencies = ["install-thumbv7em-none-eabihf"]
+
 [tasks.build]
 command = "cargo"
 args = ["build"]
@@ -49,6 +60,7 @@ dependencies = [
     "build-wasm32-simd128",
     "build-thumbv7em-none-eabihf",
     "build-x86_64-unknown",
+    "check-no-std",
 ]
 
 ############################################################
@@ -69,12 +81,10 @@ dependencies = ["install-wasm32-unknown-unknown"]
 env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--example-wasm-simd128"]
 
-[tasks.example-no-alloc]
-command = "cargo"
-args = ["run", "--example", "no_alloc"]
-
 [tasks.examples]
-dependencies = ["example-no-alloc", "example-wasm-simd128"]
+command = "cargo"
+args = ["build", "--examples"]
+dependencies = ["example-wasm-simd128"]
 
 ############################################################
 
@@ -99,8 +109,6 @@ dependencies = ["test-wasm"]
 command = "cargo"
 args = ["bench"]
 dependencies = ["test-wasm"]
-
-############################################################
 
 [tasks.all]
 dependencies = ["tests", "build", "examples", "bench"]

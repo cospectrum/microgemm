@@ -64,6 +64,17 @@ where
         };
         Self::from_parts(nrows, ncols, values, row_stride, col_stride)
     }
+    /// Extracts a slice containing the matrix values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use microgemm::{MatRef, Layout};
+    ///
+    /// let values = [1, 2, 3, 4];
+    /// let mat = MatRef::new(2, 2, &values, Layout::RowMajor);
+    /// assert_eq!(mat.as_slice(), &values);
+    /// ```
     pub fn as_slice(&self) -> &[T] {
         self.values.as_ref()
     }
@@ -74,6 +85,21 @@ where
     V: AsRef<[T]>,
     T: Copy,
 {
+    /// Returns an element at (row, col)
+    ///
+    /// # Panics
+    ///
+    /// Panics if `row * mat.row_stride() + col * mat.col_stride() >= mat.as_slice().len()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use microgemm::{MatRef, Layout};
+    ///
+    /// let values = [1, 2, 3, 4];
+    /// let mat = MatRef::new(2, 2, &values, Layout::RowMajor);
+    /// assert_eq!(mat.get(1, 0), 3);
+    /// ```
     pub fn get(&self, row: usize, col: usize) -> T {
         self.values.as_ref()[self.idx(row, col)]
     }
@@ -100,9 +126,38 @@ impl<V, T> MatBase<V, T>
 where
     V: AsMut<[T]>,
 {
+    /// Extracts a mutable slice containing the matrix values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use microgemm::{MatMut, Layout};
+    ///
+    /// let mut values = [1, 2, 3, 4];
+    /// let mut mat = MatMut::new(2, 2, &mut values, Layout::RowMajor);
+    /// assert_eq!(mat.as_mut_slice(), &mut [1, 2, 3, 4]);
+    /// ```
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         self.values.as_mut()
     }
+    /// Returns a mutable reference to an element at (row, col)
+    ///
+    /// # Panics
+    ///
+    /// Panics if `row * mat.row_stride() + col * mat.col_stride() >= mat.as_mut_slice().len()`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use microgemm::{MatMut, Layout};
+    ///
+    /// let mut values = [1, 2, 3, 4];
+    /// let mut mat = MatMut::new(2, 2, &mut values, Layout::RowMajor);
+    /// let x = mat.get_mut(1, 0);
+    /// assert_eq!(*x, 3);
+    /// *x = 0;
+    /// assert_eq!(values, [1, 2, 0, 4]);
+    /// ```
     pub fn get_mut(&mut self, row: usize, col: usize) -> &mut T {
         let idx = self.idx(row, col);
         &mut self.values.as_mut()[idx]

@@ -195,4 +195,4 @@ Cargo.lock
 !src
 
 !microgemm
-!utils
+!check_no_std

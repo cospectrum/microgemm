@@ -7,8 +7,11 @@ The implementation is based on the BLIS microkernel approach.
 
 ## Usage
 
-The `Kernel` trait is the main abstraction of microgemm.
-You can implement it yourself or use kernels that are already provided out of the box.
+The [`Kernel`] trait is the main abstraction of microgemm.
+You can implement it yourself or use kernels that are already provided out of the box ([`kernels`]).
+
+[`Kernel`]: crate::Kernel
+[`kernels`]: crate::kernels
 
 ### Implemented Kernels
 
@@ -30,7 +33,7 @@ assert_eq!(kernel.nr(), 8);
 
 let pack_sizes = mg::PackSizes {
     mc: 5 * kernel.mr(), // MC must be divisible by MR
-    kc: 380,
+    kc: 190,
     nc: 10 * kernel.nr(), // NC must be divisible by NR
 };
 let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
