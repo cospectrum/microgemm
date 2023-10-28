@@ -1,27 +1,106 @@
+[tasks.install-wasm-pack]
+command = "cargo"
+args = ["install", "wasm-pack"]
+
+[tasks.install-x86_64-unknown]
+command = "rustup"
+args = ["target", "add", "x86_64-unknown-none"]
+
+[tasks.install-wasm32-unknown-unknown]
+command = "rustup"
+args = ["target", "add", "wasm32-unknown-unknown"]
+
+[tasks.install-thumbv7em-none-eabihf]
+command = "rustup"
+args = ["target", "add", "thumbv7em-none-eabihf"]
+
+############################################################
+
 [tasks.build-wasm32]
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown"]
+dependencies = ["install-wasm32-unknown-unknown"]
 
-[tasks.add-thumbv7em-none-eabihf]
-command = "rustup"
-args = ["target", "add", "thumbv7em-none-eabihf"]
+[tasks.--build-wasm32-simd128]
+env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
+command = "cargo"
+args = ["build", "--target", "wasm32-unknown-unknown"]
+dependencies = ["install-wasm32-unknown-unknown"]
+
+[tasks.build-wasm32-simd128]
+env = { "RUSTFLAGS" = {unset = true} }
+dependencies = ["--build-wasm32-simd128"]
+
+[tasks.build-x86_64-unknown]
+command = "cargo"
+args = ["build", "--target", "x86_64-unknown-none"]
+dependencies = ["install-x86_64-unknown"]
 
 [tasks.build-thumbv7em-none-eabihf]
 command = "cargo"
 args = ["build", "--target", "thumbv7em-none-eabihf"]
-dependencies = ["add-thumbv7em-none-eabihf"]
+dependencies = ["install-thumbv7em-none-eabihf"]
 
-[tasks.build-all]
+[tasks.build]
 command = "cargo"
 args = ["build"]
 dependencies = [
     "build-wasm32",
+    "build-wasm32-simd128",
     "build-thumbv7em-none-eabihf",
+    "build-x86_64-unknown",
 ]
+
+############################################################
+
+[tasks.--example-wasm-simd128]
+env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
+command = "cargo"
+args = [
+    "build",
+    "--manifest-path",
+    "examples/wasm_simd128/Cargo.toml",
+    "--target",
+    "wasm32-unknown-unknown",
+]
+dependencies = ["install-wasm32-unknown-unknown"]
+
+[tasks.example-wasm-simd128]
+env = { "RUSTFLAGS" = {unset = true} }
+dependencies = ["--example-wasm-simd128"]
 
 [tasks.example-no-alloc]
 command = "cargo"
 args = ["run", "--example", "no_alloc"]
 
 [tasks.examples]
-dependencies = ["example-no-alloc"]
+dependencies = ["example-no-alloc", "example-wasm-simd128"]
+
+############################################################
+
+[tasks.--test-wasm]
+env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
+command = "wasm-pack"
+args = ["-v", "test", "--node", "--release"]
+dependencies = ["install-wasm-pack"]
+
+[tasks.test-wasm]
+env = { "RUSTFLAGS" = {unset = true} }
+dependencies = ["--test-wasm"]
+
+[tasks.tests]
+command = "cargo"
+args = ["test"]
+dependencies = ["test-wasm"]
+
+############################################################
+
+[tasks.bench]
+command = "cargo"
+args = ["bench"]
+dependencies = ["test-wasm"]
+
+############################################################
+
+[tasks.all]
+dependencies = ["tests", "build", "examples", "bench"]

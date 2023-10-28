@@ -22,16 +22,16 @@ repos:
         pass_filenames: false
         always_run: true
 
-      - id: test
-        name: test
-        entry: cargo test
+      - id: tests
+        name: tests
+        entry: cargo make tests
         language: system
         pass_filenames: false
         always_run: true
 
       - id: build
         name: build
-        entry: cargo make build-all
+        entry: cargo make build
         language: system
         pass_filenames: false
         always_run: true
@@ -39,6 +39,20 @@ repos:
       - id: examples
         name: examples
         entry: cargo make examples
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: doc
+        name: doc
+        entry: cargo doc
+        language: system
+        pass_filenames: false
+        always_run: true
+
+      - id: bench
+        name: bench
+        entry: cargo bench
         language: system
         pass_filenames: false
         always_run: true

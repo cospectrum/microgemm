@@ -1,8 +1,5 @@
 mod naive;
-#[cfg(test)]
-mod testing;
-
-#[cfg(test)]
-pub(crate) use testing::*;
+mod random;
 
 pub use naive::naive_gemm;
+pub use random::*;

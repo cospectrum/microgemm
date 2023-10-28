@@ -201,4 +201,48 @@ mod tests {
             test_kernel_with_random_i32(&kernel);
         }
     }
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_gemm_sample_1() {
+        let kernel = TestKernel;
+
+        let a = [
+            28, 26, -9, -29,
+            29, -8, 23, 22,
+            -2, -2, 26, -21,
+            -29, 2, 26, -17,
+            -22, -18, -24, -23,
+            -20, 14, 13, -22,
+        ];
+        let a = MatRef::new(6, 4, &a, Layout::RowMajor);
+        let b = [
+            2, -24, 20,
+            -27, -1, -16,
+            -12, -29, -26,
+            -16, -13, -18,
+        ];
+        let b = MatRef::new(4, 3, &b, Layout::RowMajor);
+        let mut c = vec![
+            480, 417, -7102,
+            2720, 13184, 2400,
+            -578, 3651, 2280,
+            1426, -1463, 7849,
+            -8973, -12188, -7249,
+            508, 627, -7298,
+        ];
+        let mut expect = c.clone();
+        let mut c = MatMut::new(6, 3, &mut c, Layout::RowMajor);
+        let mut expect = c.with_values(&mut expect);
+
+        let alpha = 4;
+        let beta = -3;
+
+        let pack_sizes = PackSizes {mc: kernel.mr(), kc: 2, nc: kernel.nr() };
+        let mut buf = vec![-2; pack_sizes.buf_len()];
+
+        kernel.gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut(), &pack_sizes, &mut buf);
+        naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, expect.as_mut());
+        assert_eq!(expect.as_slice(), c.as_slice());
+    }
 }

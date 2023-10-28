@@ -51,9 +51,9 @@ where
         c: &MatRef<Self::Scalar>,
         c_rows: Range<usize>,
         c_cols: Range<usize>,
-        dst: &mut [Self::Scalar],
+        registers: &mut [Self::Scalar],
     ) -> Layout {
-        crate::packing::block::ColMajor(dst).init_from(c, c_rows, c_cols);
+        crate::packing::block::ColMajor(registers).init_from(c, c_rows, c_cols);
         Layout::ColMajor
     }
     fn registers_to_c(
@@ -61,9 +61,9 @@ where
         c: &mut MatMut<Self::Scalar>,
         c_rows: Range<usize>,
         c_cols: Range<usize>,
-        from: &[Self::Scalar],
+        registers: &[Self::Scalar],
     ) {
-        crate::packing::block::ColMajor(from).copy_to(c, c_rows, c_cols);
+        crate::packing::block::ColMajor(registers).copy_to(c, c_rows, c_cols);
     }
     #[allow(clippy::too_many_arguments)]
     fn gemm(
