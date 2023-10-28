@@ -2,6 +2,8 @@
 
 General matrix multiplication with custom configuration in Rust.
 
+The implementation is based on the BLIS microkernel approach.
+
 ## Usage
 
 The `Kernel` trait is the main abstraction of microgemm.

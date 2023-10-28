@@ -26,26 +26,6 @@ where
         dst: &mut MatMut<Self::Scalar>,
     );
 
-    fn pack_a(
-        &self,
-        pack_sizes: &PackSizes,
-        apack: &mut [Self::Scalar],
-        a: &MatRef<Self::Scalar>,
-        a_rows: Range<usize>,
-        a_cols: Range<usize>,
-    ) -> Layout {
-        crate::packing::pack_a::<Self::Scalar>(Self::MR, pack_sizes, apack, a, a_rows, a_cols)
-    }
-    fn pack_b(
-        &self,
-        pack_sizes: &PackSizes,
-        bpack: &mut [Self::Scalar],
-        b: &MatRef<Self::Scalar>,
-        b_rows: Range<usize>,
-        b_cols: Range<usize>,
-    ) -> Layout {
-        crate::packing::pack_b::<Self::Scalar>(Self::NR, pack_sizes, bpack, b, b_rows, b_cols)
-    }
     fn registers_from_c(
         &self,
         c: &MatRef<Self::Scalar>,
