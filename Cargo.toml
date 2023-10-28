@@ -10,7 +10,7 @@ license = "MIT OR Apache-2.0"
 
 repository = "https://github.com/cospectrum/microgemm"
 readme = "README.md"
-categories = ["science", "mathematics", "no-std", "no-std::no-alloc"]
+categories = ["science", "mathematics", "wasm", "no-std", "no-std::no-alloc"]
 keywords = ["matrix", "linear-algebra"]
 
 [dependencies]
@@ -19,8 +19,11 @@ num-traits = { version = "0.2.17", default-features = false }
 
 [dev-dependencies]
 approx = "0.5.1"
-criterion = "0.5.1"
+criterion = { version = "0.5.1", default-features = false }
+getrandom = { version = "0.2.10", features = ["js"] }
+instant = { version = "0.1.12", features = ["wasm-bindgen"] }
 rand = "0.8.5"
+wasm-bindgen-test = "0.3.37"
 
 [[bench]]
 name = "gemm_f32"

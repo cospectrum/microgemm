@@ -3,34 +3,23 @@
 
 General matrix multiplication with custom configuration in Rust.
 
-## Installation
-
-To use the latest version from git, add this to your `Cargo.toml`:
-```toml
-[dependencies]
-microgemm = { git = "https://github.com/cospectrum/microgemm.git" }
-```
-
-The **MSRV** is `1.65.0`
+The implementation is based on the BLIS microkernel approach.
 
 ## Usage
 
-The `Kernel` trait is the main abstraction of microgemm.
-You can implement it yourself or use kernels that are already provided out of the box.
+The [`Kernel`] trait is the main abstraction of microgemm.
+You can implement it yourself or use kernels that are already provided out of the box ([`kernels`]).
+
+[`Kernel`]: crate::Kernel
+[`kernels`]: crate::kernels
 
 ### Implemented Kernels
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: [`2`], [`4`], [`8`], [`16`], [`32`]) | T: Copy + Zero + One + Mul<Output = T> + Add<Output = T> | Any |
-| [`NeonKernel`] | f32 | AArch64 and target feature neon |
-
-[`2`]: crate::kernels::Generic2x2Kernel
-[`4`]: crate::kernels::Generic4x4Kernel
-[`8`]: crate::kernels::Generic8x8Kernel
-[`16`]: crate::kernels::Generic16x16Kernel
-[`32`]: crate::kernels::Generic32x32Kernel
-[`NeonKernel`]: crate::kernels::NeonKernel
+| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
+| NeonKernel | f32 | AArch64 and target feature neon |
+| WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
 ### gemm
 
@@ -44,7 +33,7 @@ assert_eq!(kernel.nr(), 8);
 
 let pack_sizes = mg::PackSizes {
     mc: 5 * kernel.mr(), // MC must be divisible by MR
-    kc: 380,
+    kc: 190,
     nc: 10 * kernel.nr(), // NC must be divisible by NR
 };
 let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
@@ -65,8 +54,6 @@ let mut c = mg::MatMut::new(m, n, &mut c, mg::Layout::RowMajor);
 kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
 println!("{:?}", c.as_slice());
 ```
-
-Also see [no_alloc](https://github.com/cospectrum/microgemm/blob/main/examples/no_alloc.rs) example for use without `Vec`.
 
 ### Custom Kernel Implementation
 
@@ -106,10 +93,6 @@ impl Kernel for CustomKernel {
     }
 }
 ```
-
-## License
-Licensed under either of [Apache License, Version 2.0](https://github.com/cospectrum/microgemm/blob/main/LICENSE-APACHE)
-or [MIT license](https://github.com/cospectrum/microgemm/blob/main/LICENSE-MIT) at your option.
 */
 
 #![no_std]
@@ -130,17 +113,17 @@ mod std_prelude {
 mod gemm;
 mod kernel;
 
-pub(crate) mod copying;
 pub(crate) mod packing;
 
 pub mod kernels;
 pub mod mat;
+#[cfg(test)]
 pub mod utils;
 
 pub use generic_array::typenum;
 pub use num_traits::{One, Zero};
 
-pub use gemm::gemm_with_kernel;
+pub(crate) use gemm::gemm_with_kernel;
 pub use kernel::Kernel;
 pub use mat::{Layout, MatMut, MatRef};
 pub use packing::PackSizes;

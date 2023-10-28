@@ -6,7 +6,8 @@ use num_traits::{One, Zero};
 type Product<L, R> = <L as Multiply<R>>::Output;
 
 #[allow(clippy::too_many_arguments)]
-pub fn gemm_with_kernel<T, K>(
+#[inline]
+pub(crate) fn gemm_with_kernel<T, K>(
     kernel: &K,
     alpha: T,
     a: &MatRef<T>,
@@ -42,10 +43,12 @@ pub fn gemm_with_kernel<T, K>(
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let rhs_layout = kernel.pack_b(pack_sizes, bpack, b, pc..pc + kc, jc..jc + nc);
+            let rhs_layout =
+                crate::packing::pack_b(nr, pack_sizes, bpack, b, pc..pc + kc, jc..jc + nc);
 
             for ic in (0..m).step_by(mc) {
-                let lhs_layout = kernel.pack_a(pack_sizes, apack, a, ic..ic + mc, pc..pc + kc);
+                let lhs_layout =
+                    crate::packing::pack_a(mr, pack_sizes, apack, a, ic..ic + mc, pc..pc + kc);
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
                     let rhs_values = &bpack[kc * nr * l2..kc * nr * (l2 + 1)];
@@ -58,15 +61,16 @@ pub fn gemm_with_kernel<T, K>(
                         let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-
-                        let mut dst = kernel.copy_from_c(
+                        let dst_layout = crate::packing::registers_from_c(
+                            dst_buf,
                             &c.to_ref(),
                             dst_rows.clone(),
                             dst_cols.clone(),
-                            dst_buf,
                         );
+                        let mut dst =
+                            MatMut::new(dst_rows.len(), dst_cols.len(), dst_buf, dst_layout);
                         kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
-                        kernel.copy_to_c(c, dst_rows, dst_cols.clone(), &dst.to_ref());
+                        crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
                 }
             }
@@ -199,5 +203,49 @@ mod tests {
         for _ in 0..20 {
             test_kernel_with_random_i32(&kernel);
         }
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_gemm_sample_1() {
+        let kernel = TestKernel;
+
+        let a = [
+            28, 26, -9, -29,
+            29, -8, 23, 22,
+            -2, -2, 26, -21,
+            -29, 2, 26, -17,
+            -22, -18, -24, -23,
+            -20, 14, 13, -22,
+        ];
+        let a = MatRef::new(6, 4, &a, Layout::RowMajor);
+        let b = [
+            2, -24, 20,
+            -27, -1, -16,
+            -12, -29, -26,
+            -16, -13, -18,
+        ];
+        let b = MatRef::new(4, 3, &b, Layout::RowMajor);
+        let mut c = vec![
+            480, 417, -7102,
+            2720, 13184, 2400,
+            -578, 3651, 2280,
+            1426, -1463, 7849,
+            -8973, -12188, -7249,
+            508, 627, -7298,
+        ];
+        let mut expect = c.clone();
+        let mut c = MatMut::new(6, 3, &mut c, Layout::RowMajor);
+        let mut expect = c.with_values(&mut expect);
+
+        let alpha = 4;
+        let beta = -3;
+
+        let pack_sizes = PackSizes {mc: kernel.mr(), kc: 2, nc: kernel.nr() };
+        let mut buf = vec![-2; pack_sizes.buf_len()];
+
+        kernel.gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut(), &pack_sizes, &mut buf);
+        naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, expect.as_mut());
+        assert_eq!(expect.as_slice(), c.as_slice());
     }
 }

@@ -4,7 +4,7 @@ use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 use rand::Rng;
 
-pub(crate) fn test_kernel_with_random_i32<K>(kernel: &K)
+pub fn test_kernel_with_random_i32<K>(kernel: &K)
 where
     K: Kernel<Scalar = i32>,
 {
@@ -19,11 +19,8 @@ where
     random_kernel_test(kernel, scalar, cmp);
 }
 
-pub(crate) fn random_kernel_test<T, K>(
-    kernel: &K,
-    scalar: impl FnMut() -> T,
-    cmp: impl FnOnce(&[T], &[T]),
-) where
+pub fn random_kernel_test<T, K>(kernel: &K, scalar: impl FnMut() -> T, cmp: impl FnOnce(&[T], &[T]))
+where
     K: Kernel<Scalar = T>,
     T: Copy + Zero + One,
 {
@@ -34,7 +31,7 @@ pub(crate) fn random_kernel_test<T, K>(
     cmp_kernels_with_random_data(&test_kernel, kernel, scalar, cmp, mc, nc);
 }
 
-pub(crate) fn toss_a_coin<T>(front: T, back: T) -> T {
+fn toss_a_coin<T>(front: T, back: T) -> T {
     let mut rng = rand::thread_rng();
     if rng.gen_bool(0.5) {
         front
@@ -43,7 +40,7 @@ pub(crate) fn toss_a_coin<T>(front: T, back: T) -> T {
     }
 }
 
-pub(crate) fn cmp_kernels_with_random_data<T, K1, K2>(
+pub fn cmp_kernels_with_random_data<T, K1, K2>(
     kernel1: &K1,
     kernel2: &K2,
     mut scalar: impl FnMut() -> T,
