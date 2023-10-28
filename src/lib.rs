@@ -17,7 +17,7 @@ You can implement it yourself or use kernels that are already provided out of th
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul<Output = T> + Add<Output = T> | Any |
+| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel | f32 | AArch64 and target feature neon |
 | WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 

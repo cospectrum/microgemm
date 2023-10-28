@@ -163,3 +163,63 @@ where
         &mut self.values.as_mut()[idx]
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_mat_ref_rowmajor() {
+        let values = [
+            1, 2,
+            3, 4,
+        ];
+        let mat = MatRef::new(2, 2, &values, Layout::RowMajor);
+        let unpack = [
+            mat.get(0, 0), mat.get(0, 1),
+            mat.get(1, 0), mat.get(1, 1),
+        ];
+        assert_eq!(unpack, values);
+    }
+    #[rustfmt::skip]
+    #[test]
+    fn test_mat_ref_colmajor() {
+        let values = [
+            1, 3,
+            2, 4,
+        ];
+        let values_t = [
+            1, 2,
+            3, 4,
+        ];
+        let mat = MatRef::new(2, 2, &values, Layout::ColMajor);
+        let unpack = [
+            mat.get(0, 0), mat.get(0, 1),
+            mat.get(1, 0), mat.get(1, 1),
+        ];
+        assert_eq!(unpack, values_t);
+    }
+    #[rustfmt::skip]
+    #[test]
+    fn test_mat_mut() {
+        let mut values = [
+            1, 3,
+            2, 4,
+        ];
+        let mut mat = MatMut::new(2, 2, &mut values, Layout::ColMajor);
+
+        let unpack = [
+            *mat.get_mut(0, 0), *mat.get_mut(0, 1),
+            *mat.get_mut(1, 0), *mat.get_mut(1, 1),
+        ];
+        assert_eq!(unpack, [1, 2, 3, 4]);
+
+        *mat.get_mut(0, 1) = -2;
+        let expect = [
+            1, 3,
+            -2, 4,
+        ];
+        assert_eq!(mat.as_slice(), expect);
+    }
+}
