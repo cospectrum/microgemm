@@ -16,11 +16,11 @@ You can implement it yourself or use kernels that are already provided out of th
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32)[^1] | T: Copy + Zero + One + Mul + Add | Any |
+| GenericNxNKernel <sup>[1](#f1)</sup> <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel | f32 | AArch64 and target feature neon |
 | WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
-^[1]: N indicates the number of "registers" used in the microkernel
+<sup id="f1"> 1: N indicates the number of "registers" used in the microkernel.</sup>
 
 ### gemm
 
@@ -57,8 +57,8 @@ fn main() {
     println!("{:?}", c.as_slice());
 }
 ```
-
 Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
+
 
 ### Custom Kernel Implementation
 
@@ -99,7 +99,7 @@ impl Kernel for CustomKernel {
 }
 ```
 
+
 ## License
 Licensed under either of [Apache License, Version 2.0](./LICENSE-APACHE)
 or [MIT license](./LICENSE-MIT) at your option.
-
