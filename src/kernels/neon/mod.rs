@@ -16,7 +16,7 @@ impl<T> NeonKernel<T> {
     ///
     /// # Examples
     ///
-    /// ```
+    /// ```no_run
     /// use microgemm::kernels::NeonKernel;
     ///
     /// let kernel = if cfg!(target_feature = "neon") {

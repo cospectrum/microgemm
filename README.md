@@ -1,4 +1,7 @@
-# microgemm
+# microgemm &emsp; [![latest_version]][crates.io]
+
+[latest_version]: https://img.shields.io/crates/v/microgemm.svg
+[crates.io]: https://crates.io/crates/microgemm
 
 General matrix multiplication with custom configuration in Rust.
 
