@@ -3,6 +3,7 @@ mod microkernel;
 
 use core::marker::PhantomData;
 
+/// Available only for the `wasm32` target.
 #[derive(Debug, Clone, Copy)]
 pub struct WasmSimd128Kernel<T> {
     marker: PhantomData<T>,
@@ -16,7 +17,7 @@ impl<T> WasmSimd128Kernel<T> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use microgemm::kernels::WasmSimd128Kernel;
     ///
     /// let kernel = if cfg!(target_feature = "simd128") {

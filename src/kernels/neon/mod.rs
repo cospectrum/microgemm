@@ -3,6 +3,7 @@ mod microkernel;
 
 use core::marker::PhantomData;
 
+/// Available only for the `aarch64` target.
 #[derive(Debug, Clone, Copy)]
 pub struct NeonKernel<T> {
     marker: PhantomData<T>,
@@ -16,7 +17,7 @@ impl<T> NeonKernel<T> {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// use microgemm::kernels::NeonKernel;
     ///
     /// let kernel = if cfg!(target_feature = "neon") {
