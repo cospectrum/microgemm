@@ -189,6 +189,8 @@ Cargo.lock
 !Cargo.toml
 !Makefile.toml
 
+!.github
+
 !tests
 !examples
 !benches
