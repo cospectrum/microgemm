@@ -1,7 +1,7 @@
 #[cfg(test)]
 #[cfg(target_arch = "aarch64")]
 mod tests {
-    use microgemm::{kernels::NeonKernel, Kernel, MatRef, Layout, PackSizes, MatMut};
+    use microgemm::{kernels::NeonKernel, Kernel, Layout, MatMut, MatRef, PackSizes};
 
     #[test]
     fn test_neon() {
@@ -23,7 +23,15 @@ mod tests {
             nc: kernel.nr(),
         };
         let packing_buf = vec![0f32; pack_sizes.buf_len()];
-        kernel.gemm(1f32, a.as_ref(), b.as_ref(), 0f32, c.as_mut(), pack_sizes, packing_buf);
+        kernel.gemm(
+            1f32,
+            a.as_ref(),
+            b.as_ref(),
+            0f32,
+            c.as_mut(),
+            pack_sizes,
+            packing_buf,
+        );
         assert_eq!(c.as_slice(), [140., 146., 320., 335.]);
     }
 }

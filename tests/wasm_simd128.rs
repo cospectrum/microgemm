@@ -1,8 +1,8 @@
 #[cfg(test)]
 #[cfg(target_arch = "wasm32")]
 mod tests {
+    use microgemm::{kernels::WasmSimd128Kernel, Kernel, Layout, MatMut, MatRef, PackSizes};
     use wasm_bindgen_test::*;
-    use microgemm::{kernels::WasmSimd128Kernel, Kernel, MatRef, Layout, PackSizes, MatMut};
 
     #[wasm_bindgen_test]
     fn test_wasm_simd128_f32() {
@@ -23,7 +23,15 @@ mod tests {
             nc: kernel.nr(),
         };
         let packing_buf = vec![0f32; pack_sizes.buf_len()];
-        kernel.gemm(1f32, a.as_ref(), b.as_ref(), 0f32, c.as_mut(), pack_sizes, packing_buf);
+        kernel.gemm(
+            1f32,
+            a.as_ref(),
+            b.as_ref(),
+            0f32,
+            c.as_mut(),
+            pack_sizes,
+            packing_buf,
+        );
         assert_eq!(c.as_slice(), [140., 146., 320., 335.]);
     }
 }
