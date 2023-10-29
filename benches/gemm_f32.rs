@@ -22,7 +22,7 @@ fn bench_gemm(criterion: &mut Criterion) {
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
-        let kernel = &mg::kernels::NeonKernel::<f32>::new();
+        let kernel = unsafe { &mg::kernels::NeonKernel::<f32>::new() };
         bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
 

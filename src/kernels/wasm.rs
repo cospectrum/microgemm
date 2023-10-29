@@ -2,13 +2,30 @@ use crate::typenum::U4;
 use core::arch::wasm32::*;
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct WasmSimd128Kernel<T> {
     marker: PhantomData<T>,
 }
 
 impl<T> WasmSimd128Kernel<T> {
-    pub const fn new() -> Self {
+    /// # Safety
+    ///
+    /// The caller must ensure that the created kernel will only be used in an
+    /// environment with `simd128` support.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![cfg(target_arch = "wasm32")]
+    /// use microgemm::kernels::WasmSimd128Kernel;
+    ///
+    /// let kernel = if cfg!(target_feature = "simd128") {
+    ///     unsafe { WasmSimd128Kernel::<f32>::new() }
+    /// } else {
+    ///     panic!("simd128 target feature is not enabled");
+    /// };
+    /// ```
+    pub const unsafe fn new() -> Self {
         Self {
             marker: PhantomData,
         }
@@ -94,7 +111,15 @@ mod tests {
     use rand::{thread_rng, Rng};
     use wasm_bindgen_test::*;
 
-    const WASM_KERNEL_F32: &WasmSimd128Kernel<f32> = &WasmSimd128Kernel::<f32>::new();
+    const WASM_KERNEL_F32: &WasmSimd128Kernel<f32> = &wasm_simd128_kernel();
+
+    const fn wasm_simd128_kernel<T>() -> WasmSimd128Kernel<T> {
+        if cfg!(target_feature = "simd128") {
+            unsafe { WasmSimd128Kernel::new() }
+        } else {
+            panic!("simd128 target feature is not enabled");
+        }
+    }
 
     #[wasm_bindgen_test]
     fn test_wasm_simd128_kernel_f32() {
@@ -115,7 +140,7 @@ mod tests {
         use core::hint::black_box;
         use instant::Instant;
 
-        const ITER: usize = 50;
+        const ITER: usize = 20;
         let [m, k, n] = [1000, 1000, 1000];
 
         let alpha = black_box(1f32);

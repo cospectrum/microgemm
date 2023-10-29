@@ -4,13 +4,30 @@ use core::arch::aarch64::{
 };
 use core::marker::PhantomData;
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct NeonKernel<T> {
     marker: PhantomData<T>,
 }
 
 impl<T> NeonKernel<T> {
-    pub const fn new() -> Self {
+    /// # Safety
+    ///
+    /// The caller must ensure that the created kernel will only be used in an
+    /// environment with `neon` support.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![cfg(target_arch = "aarch64")]
+    /// use microgemm::kernels::NeonKernel;
+    ///
+    /// let kernel = if cfg!(target_feature = "neon") {
+    ///     unsafe { NeonKernel::<f32>::new() }
+    /// } else {
+    ///     panic!("neon target feature is not enabled");
+    /// };
+    /// ```
+    pub const unsafe fn new() -> Self {
         Self {
             marker: PhantomData,
         }
@@ -136,15 +153,25 @@ fn neon_4x4_microkernel_f32(
 
 #[cfg(test)]
 mod tests {
+    use std::arch::is_aarch64_feature_detected;
+
     use super::*;
     use crate::kernels::Generic4x4Kernel;
     use crate::utils::*;
 
     use rand::{thread_rng, Rng};
 
+    fn neon_kernel<T>() -> NeonKernel<T> {
+        if is_aarch64_feature_detected!("neon") {
+            unsafe { NeonKernel::new() }
+        } else {
+            panic!("neon feature is not supported");
+        }
+    }
+
     #[test]
     fn test_neon_naive_f32() {
-        let kernel = &NeonKernel::<f32>::new();
+        let kernel = &neon_kernel::<f32>();
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 80.0 * f32::EPSILON;
@@ -159,7 +186,7 @@ mod tests {
     #[test]
     fn test_neon_f32() {
         let generic_kernel = &Generic4x4Kernel::<f32>::new();
-        let neon_kernel = &NeonKernel::<f32>::new();
+        let neon_kernel = &neon_kernel::<f32>();
 
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {

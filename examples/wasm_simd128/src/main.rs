@@ -1,8 +1,14 @@
+#![cfg(target_arch = "wasm32")]
+
 use microgemm as mg;
 use microgemm::Kernel as _;
 
 fn main() {
-    let kernel = mg::kernels::WasmSimd128Kernel::<f32>::new();
+    let kernel = if cfg!(target_feature = "simd128") {
+        unsafe { mg::kernels::WasmSimd128Kernel::<f32>::new() }
+    } else {
+        panic!("simd128 target feature is not enabled");
+    };
     assert_eq!(kernel.mr(), 4);
     assert_eq!(kernel.nr(), 4);
 
