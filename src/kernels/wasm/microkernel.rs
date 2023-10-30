@@ -78,7 +78,7 @@ fn wasm_simd128_4x4_microkernel_f32(
 #[cfg(test)]
 mod tests {
     use crate::std_prelude::*;
-    use crate::{kernels::*, utils::random_kernel_test, *};
+    use crate::{kernels::*, utils::*, *};
     use rand::{thread_rng, Rng};
     use wasm_bindgen_test::*;
 
@@ -96,7 +96,7 @@ mod tests {
     fn test_wasm_simd128_kernel_f32() {
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 75.0 * f32::EPSILON;
-            assert_relative_eq!(expect, got, epsilon = eps);
+            assert_approx_eq(expect, got, eps);
         };
         let mut rng = thread_rng();
 

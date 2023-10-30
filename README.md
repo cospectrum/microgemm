@@ -1,7 +1,8 @@
-# microgemm &emsp; [![latest_version]][crates.io]
+# microgemm &emsp; [![latest_version]][crates.io] [![docs.rs]](https://docs.rs/microgemm)
 
-[latest_version]: https://img.shields.io/crates/v/microgemm.svg
+[latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
 [crates.io]: https://crates.io/crates/microgemm
+[docs.rs]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
 
 General matrix multiplication with custom configuration in Rust.
 
@@ -16,11 +17,9 @@ You can implement it yourself or use kernels that are already provided out of th
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <sup>[1](#f1)</sup> <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
+| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel | f32 | AArch64 and target feature neon |
 | WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
-
-<sup id="f1"> 1: N indicates the number of "registers" used in the microkernel.</sup>
 
 ### gemm
 

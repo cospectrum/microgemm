@@ -145,7 +145,7 @@ mod tests {
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 80.0 * f32::EPSILON;
-            assert_relative_eq!(expect, got, epsilon = eps);
+            assert_approx_eq(expect, got, eps);
         };
         for _ in 0..40 {
             let scalar = || rng.gen_range(-1.0..1.0);
@@ -161,7 +161,7 @@ mod tests {
         let mut rng = thread_rng();
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 75.0 * f32::EPSILON;
-            assert_relative_eq!(expect, got, epsilon = eps);
+            assert_approx_eq(expect, got, eps);
         };
 
         for _ in 0..60 {

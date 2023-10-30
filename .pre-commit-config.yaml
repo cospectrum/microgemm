@@ -1,13 +1,6 @@
 repos:
   - repo: local
     hooks:
-      - id: rustfmt
-        name: rustfmt
-        language: system
-        entry: cargo fmt --check
-        pass_filenames: false
-        always_run: true
-
       - id: all
         name: all
         entry: cargo make all

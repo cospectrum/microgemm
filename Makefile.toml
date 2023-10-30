@@ -107,7 +107,7 @@ dependencies = ["example-wasm-simd128", "example-f16"]
 ############################################################
 
 [tasks.--test-wasm]
-env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
+env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
 command = "wasm-pack"
 args = ["-v", "test", "--node", "--release"]
 dependencies = ["install-wasm-pack"]
@@ -117,6 +117,7 @@ env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--test-wasm"]
 
 [tasks.tests]
+env = { "RUSTFLAGS" = "-D warnings" }
 command = "cargo"
 args = ["test"]
 dependencies = ["test-wasm"]
@@ -173,6 +174,7 @@ dependencies = ["--sanitize-neon"]
 
 [tasks.all]
 dependencies = [
+    "fmt",
     "check",
     "clippy",
     "tests",
@@ -180,3 +182,8 @@ dependencies = [
     "examples",
     "bench",
 ]
+
+[tasks.publish]
+command = "cargo"
+args = ["publish"]
+dependencies = ["all"]
