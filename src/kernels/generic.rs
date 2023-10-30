@@ -110,7 +110,7 @@ mod tests {
     fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 75.0 * f32::EPSILON;
-            assert_relative_eq!(expect, got, epsilon = eps);
+            assert_approx_eq(expect, got, eps);
         };
         let mut rng = thread_rng();
 

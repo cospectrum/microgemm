@@ -32,3 +32,16 @@ impl<T> WasmSimd128Kernel<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    fn _check_new_wasm() {
+        use crate::kernels::WasmSimd128Kernel;
+
+        let _kernel = if cfg!(target_feature = "simd128") {
+            unsafe { WasmSimd128Kernel::<f32>::new() }
+        } else {
+            panic!("simd128 target feature is not enabled");
+        };
+    }
+}

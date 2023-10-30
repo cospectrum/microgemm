@@ -32,3 +32,16 @@ impl<T> NeonKernel<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    fn _check_new_neon() {
+        use crate::kernels::NeonKernel;
+
+        let _kernel = if cfg!(target_feature = "neon") {
+            unsafe { NeonKernel::<f32>::new() }
+        } else {
+            panic!("neon target feature is not enabled");
+        };
+    }
+}
