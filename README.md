@@ -1,5 +1,6 @@
-# microgemm &emsp; [![latest_version]][crates.io] [![docs.rs]](https://docs.rs/microgemm)
+# microgemm &emsp; [![github]](https://github.com/cospectrum/microgemm) [![latest_version]][crates.io] [![docs.rs]](https://docs.rs/microgemm)
 
+[github]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
 [latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
 [crates.io]: https://crates.io/crates/microgemm
 [docs.rs]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs

@@ -155,6 +155,17 @@ command = "cargo"
 args = ["clippy", "--all-features", "--", "-Dwarnings"]
 dependencies = ["clippy-wasm"]
 
+[tasks.doc]
+toolchain = "nightly"
+env = { "RUSTDOCFLAGS" = "-D warnings" }
+command = "cargo"
+args = ["doc", "--no-deps", "--all-features"]
+
+[tasks.semver]
+install_crate = "cargo-semver-checks"
+command = "cargo"
+args = ["semver-checks"]
+
 ############################################################
 
 [tasks.bench]
@@ -174,6 +185,8 @@ dependencies = ["--sanitize-neon"]
 
 [tasks.all]
 dependencies = [
+    "semver",
+    "doc",
     "fmt",
     "check",
     "clippy",
