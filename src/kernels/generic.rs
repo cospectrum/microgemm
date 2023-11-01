@@ -1,4 +1,5 @@
 use crate::{
+    kernels::dbg_check_microkernel_inputs,
     typenum::{U16, U2, U32, U4, U8},
     Kernel, One, Zero,
 };
@@ -64,9 +65,7 @@ macro_rules! impl_generic_square_kernel {
                 beta: Self::Scalar,
                 dst: &mut crate::MatMut<Self::Scalar>,
             ) {
-                assert_eq!(dst.nrows(), Self::MR);
-                assert_eq!(dst.ncols(), Self::NR);
-                assert_eq!(dst.row_stride(), 1);
+                dbg_check_microkernel_inputs(self, lhs, rhs, dst);
 
                 const DIM: usize = $constant;
                 let mut cols = [T::zero(); DIM * DIM];
