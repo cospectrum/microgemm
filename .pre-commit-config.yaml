@@ -3,7 +3,7 @@ repos:
     hooks:
       - id: all
         name: all
-        entry: cargo make all
+        entry: cargo make pre-commit
         language: system
         pass_filenames: false
         always_run: true

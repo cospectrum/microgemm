@@ -106,18 +106,30 @@ dependencies = ["example-wasm-simd128", "example-f16"]
 
 ############################################################
 
-[tasks.--test-wasm]
+[tasks.--test-firefox]
 env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
 command = "wasm-pack"
-args = ["-v", "test", "--node", "--release"]
+args = ["test", "--headless", "--firefox", "--release"]
+dependencies = ["install-wasm-pack"]
+
+[tasks.test-firefox]
+env = { "RUSTFLAGS" = {unset = true} }
+dependencies = ["--test-firefox"]
+
+[tasks.test-node]
+env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
+command = "wasm-pack"
+args = ["test", "--node", "--release"]
 dependencies = ["install-wasm-pack"]
 
 [tasks.test-wasm]
 env = { "RUSTFLAGS" = {unset = true} }
-dependencies = ["--test-wasm"]
+dependencies = [
+    "test-firefox",
+    "test-node",
+]
 
 [tasks.tests]
-env = { "RUSTFLAGS" = "-D warnings" }
 command = "cargo"
 args = ["test"]
 dependencies = ["test-wasm"]
@@ -152,7 +164,7 @@ dependencies = ["install-wasm32-unknown-unknown"]
 
 [tasks.clippy]
 command = "cargo"
-args = ["clippy", "--all-features", "--", "-Dwarnings"]
+args = ["clippy", "--all-targets", "--all-features", "--", "-Dwarnings"]
 dependencies = ["clippy-wasm"]
 
 [tasks.doc]
@@ -166,12 +178,17 @@ install_crate = "cargo-semver-checks"
 command = "cargo"
 args = ["semver-checks"]
 
+[tasks.msrv]
+install_crate = "cargo-msrv"
+command = "cargo"
+args = ["msrv", "verify"]
+
 ############################################################
 
 [tasks.bench]
 command = "cargo"
 args = ["bench"]
-dependencies = ["test-wasm"]
+dependencies = ["test-firefox"]
 
 [tasks.--sanitize-neon]
 toolchain = "nightly"
@@ -183,8 +200,9 @@ args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--sanitize-neon"]
 
-[tasks.all]
+[tasks.pre-commit]
 dependencies = [
+    "msrv",
     "semver",
     "doc",
     "fmt",
@@ -193,8 +211,10 @@ dependencies = [
     "tests",
     "build",
     "examples",
-    "bench",
 ]
+
+[tasks.all]
+dependencies = ["bench", "pre-commit"]
 
 [tasks.publish]
 command = "cargo"

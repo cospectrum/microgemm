@@ -82,7 +82,7 @@ mod tests {
     use rand::{thread_rng, Rng};
     use wasm_bindgen_test::*;
 
-    const WASM_KERNEL_F32: &WasmSimd128Kernel<f32> = &wasm_simd128_kernel();
+    wasm_bindgen_test_configure!(run_in_browser);
 
     const fn wasm_simd128_kernel<T>() -> WasmSimd128Kernel<T> {
         if cfg!(target_feature = "simd128") {
@@ -94,6 +94,7 @@ mod tests {
 
     #[wasm_bindgen_test]
     fn test_wasm_simd128_kernel_f32() {
+        let kernel = wasm_simd128_kernel();
         let cmp = |expect: &[f32], got: &[f32]| {
             let eps = 75.0 * f32::EPSILON;
             assert_approx_eq(expect, got, eps);
@@ -102,7 +103,7 @@ mod tests {
 
         for _ in 0..40 {
             let scalar = || rng.gen_range(-1.0..1.0);
-            random_kernel_test(WASM_KERNEL_F32, scalar, cmp);
+            random_kernel_test(&kernel, scalar, cmp);
         }
     }
 
@@ -111,8 +112,8 @@ mod tests {
         use core::hint::black_box;
         use instant::Instant;
 
-        const ITER: usize = 20;
-        let [m, k, n] = [1000, 1000, 1000];
+        const ITER: usize = 5;
+        let [m, k, n] = [512, 1024, 512];
 
         let alpha = black_box(1f32);
         let beta = black_box(1f32);
@@ -125,8 +126,8 @@ mod tests {
         let b = &MatRef::new(k, n, &b, Layout::RowMajor);
         let c = &mut MatMut::new(m, n, &mut c, Layout::RowMajor);
 
+        let wasm_kernel = &wasm_simd128_kernel();
         let generic_kernel = Generic4x4Kernel::<f32>::new();
-
         let pack_sizes = &PackSizes {
             mc: m,
             kc: k,
@@ -134,20 +135,20 @@ mod tests {
         };
         let mut packing_buf = vec![0f32; pack_sizes.buf_len()];
 
-        let mean_time = |t| t as u128 / ITER as u128;
+        let mean_time = |t: Instant| t.elapsed() / ITER as u32;
 
         let time = Instant::now();
         for _ in 0..ITER {
             generic_kernel.gemm(alpha, a, b, beta, c, pack_sizes, &mut packing_buf);
         }
-        let generic = mean_time(time.elapsed().as_millis());
-        console_log!("generic bench: {}", generic);
+        let generic = mean_time(time);
+        console_log!("generic bench: {:?}", generic);
 
         let time = Instant::now();
         for _ in 0..ITER {
-            WASM_KERNEL_F32.gemm(alpha, a, b, beta, c, pack_sizes, &mut packing_buf);
+            wasm_kernel.gemm(alpha, a, b, beta, c, pack_sizes, &mut packing_buf);
         }
-        let wasm = mean_time(time.elapsed().as_millis());
-        console_log!("wasm bench: {}", wasm);
+        let wasm = mean_time(time);
+        console_log!("wasm bench: {:?}", wasm);
     }
 }

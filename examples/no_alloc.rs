@@ -1,27 +1,27 @@
 use microgemm as mg;
 use microgemm::{kernels::Generic4x4Kernel, Kernel as _};
 
-const M: usize = 10;
-const K: usize = 15;
-const N: usize = 20;
+const M: usize = 15;
+const K: usize = 16;
+const N: usize = 22;
 
 const KERNEL: Generic4x4Kernel<f32> = Generic4x4Kernel::<f32>::new();
 
 const PACK_SIZES: &mg::PackSizes = &mg::PackSizes {
-    mc: Generic4x4Kernel::<f32>::MR,
-    kc: 15,
-    nc: Generic4x4Kernel::<f32>::NR,
+    mc: 2 * Generic4x4Kernel::<f32>::MR,
+    kc: 16,
+    nc: 3 * Generic4x4Kernel::<f32>::NR,
 };
 
 fn main() {
-    let mut packing_buf = [0f32; PACK_SIZES.buf_len()];
+    let mut packing_buf = [0.0; PACK_SIZES.buf_len()];
 
-    let alpha = 2f32;
-    let beta = -3f32;
+    let alpha = 2.0;
+    let beta = -3.0;
 
-    let a = [3f32; M * K];
-    let b = [4f32; K * N];
-    let mut c = [5f32; M * N];
+    let a = [3.0; M * K];
+    let b = [4.0; K * N];
+    let mut c = [5.0; M * N];
 
     let a = mg::MatRef::new(M, K, &a, mg::Layout::RowMajor);
     let b = mg::MatRef::new(K, N, &b, mg::Layout::RowMajor);

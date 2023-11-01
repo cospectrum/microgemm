@@ -186,6 +186,7 @@ Cargo.lock
 !README.md
 !LICENSE-APACHE
 !LICENSE-MIT
+!CONTRIBUTING.md
 !Cargo.toml
 !Makefile.toml
 
