@@ -105,6 +105,25 @@ impl Kernel for CustomKernel {
     }
 }
 ```
+
+## Benchmarks
+
+All benchmarks are performed on square matrices of dimension `n` and <br>
+with `pack_sizes == PackSizes { mc: n, kc: n, nc: n }`.
+
+### AArch64 (M1)
+
+#### f32
+
+```notrust
+   n    NeonKernel    Generic4x4    Generic8x8  naive(rustc)
+  32        10.7µs        13.9µs        12.7µs        53.2µs
+  64        50.6µs          73µs        62.7µs       307.7µs
+ 128       257.5µs       482.8µs       379.8µs         2.5ms
+ 256           1ms           2ms         1.3ms         9.5ms
+ 512         3.4ms         8.4ms           6ms        94.5ms
+1024          25ms        66.4ms        46.4ms       882.7ms
+```
 */
 
 #![no_std]

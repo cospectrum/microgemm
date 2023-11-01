@@ -17,7 +17,7 @@ impl<T> WasmSimd128Kernel<T> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use microgemm::kernels::WasmSimd128Kernel;
     ///
     /// let kernel = if cfg!(target_feature = "simd128") {
@@ -26,6 +26,7 @@ impl<T> WasmSimd128Kernel<T> {
     ///     panic!("simd128 target feature is not enabled");
     /// };
     /// ```
+    #[cfg(not(doctest))]
     pub const unsafe fn new() -> Self {
         Self {
             marker: PhantomData,

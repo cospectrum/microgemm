@@ -17,7 +17,7 @@ impl<T> NeonKernel<T> {
     ///
     /// # Examples
     ///
-    /// ```ignore
+    /// ```
     /// use microgemm::kernels::NeonKernel;
     ///
     /// let kernel = if cfg!(target_feature = "neon") {
@@ -26,6 +26,7 @@ impl<T> NeonKernel<T> {
     ///     panic!("neon target feature is not enabled");
     /// };
     /// ```
+    #[cfg(not(doctest))]
     pub const unsafe fn new() -> Self {
         Self {
             marker: PhantomData,
