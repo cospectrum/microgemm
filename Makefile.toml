@@ -106,11 +106,15 @@ dependencies = ["example-wasm-simd128", "example-f16"]
 
 ############################################################
 
-[tasks.test-firefox]
+[tasks.--test-firefox]
 env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
 command = "wasm-pack"
 args = ["test", "--headless", "--firefox", "--release"]
 dependencies = ["install-wasm-pack"]
+
+[tasks.test-firefox]
+env = { "RUSTFLAGS" = {unset = true} }
+dependencies = ["--test-firefox"]
 
 [tasks.test-node]
 env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
