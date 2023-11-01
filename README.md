@@ -1,17 +1,21 @@
-# microgemm &emsp; [![github]](https://github.com/cospectrum/microgemm) [![latest_version]][crates.io] [![docs.rs]](https://docs.rs/microgemm)
+# microgemm
+[![github]](https://github.com/cospectrum/microgemm)
+[![latest_version]][crates.io]
+[![docs.rs]](https://docs.rs/microgemm)
 
 [github]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
 [latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
 [crates.io]: https://crates.io/crates/microgemm
 [docs.rs]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
 
-General matrix multiplication with custom configuration in Rust.
+General matrix multiplication with custom configuration in Rust. <br>
+Supports `no_std` and `no_alloc` environments.
 
 The implementation is based on the BLIS microkernel approach.
 
 ## Usage
 
-The `Kernel` trait is the main abstraction of microgemm.
+The `Kernel` trait is the main abstraction of `microgemm`.
 You can implement it yourself or use kernels that are already provided out of the box.
 
 ### Implemented Kernels
@@ -36,7 +40,7 @@ fn main() {
     let pack_sizes = mg::PackSizes {
         mc: 5 * kernel.mr(), // MC must be divisible by MR
         kc: 190,
-        nc: 10 * kernel.nr(), // NC must be divisible by NR
+        nc: 9 * kernel.nr(), // NC must be divisible by NR
     };
     let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
 

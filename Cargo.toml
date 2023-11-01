@@ -5,13 +5,13 @@ edition = "2021"
 authors = ["cospectrum"]
 rust-version = "1.65.0"
 
-description = "General matrix multiplication with custom configuration in Rust"
+description = "General matrix multiplication with custom configuration in Rust. Supports no_std and no_alloc environments."
 license = "MIT OR Apache-2.0"
 
 repository = "https://github.com/cospectrum/microgemm"
 readme = "README.md"
 categories = ["science", "mathematics", "wasm", "no-std", "no-std::no-alloc"]
-keywords = ["matrix", "linear-algebra"]
+keywords = ["gemm", "matrix", "linear-algebra", "math"]
 
 [dependencies]
 generic-array = { version = "1.0.0", default-features = false }

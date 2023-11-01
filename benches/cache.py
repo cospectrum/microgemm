@@ -3,7 +3,6 @@ KiB = int
 MiB = int
 
 SIZE_OF_ELEMENT: Bytes = 4
-KC = 1024
 
 MR = 4
 NR = 4
@@ -32,37 +31,36 @@ class Cache:
 
     def get_other_dim(self, dim: int, size_of_element: Bytes) -> int:
         size = self.num_of_elements(size_of_element)
-        assert size % dim == 0
-        return size // dim
+        return div(size, dim)
 
     def num_of_elements(self, size_of_element: Bytes) -> int:
-        assert self.bytes() % size_of_element == 0
-        return self.bytes() // size_of_element
+        return div(self.byte(), size_of_element)
 
-    def bytes(self) -> Bytes:
+    def byte(self) -> Bytes:
         return self._bytes
 
     def kib(self) -> KiB:
-        bs = self.bytes()
-        assert bs % 1024 == 0
-        return bs // 1024
+        return div(self.byte(), 1024)
 
     def mib(self) -> MiB:
-        kib = self.kib()
-        assert kib % 1024 == 0
-        return kib // 1024
+        return div(self.kib(), 1024)
 
     @classmethod
     def from_bytes(cls, b: Bytes) -> "Cache":
         return cls(b)
 
     @classmethod
-    def from_kibs(cls, k: KiB) -> "Cache":
-        return cls.from_bytes(k * 1024)
+    def from_kibs(cls, kib: KiB) -> "Cache":
+        return cls.from_bytes(kib * 1024)
 
     @classmethod
-    def from_mibs(cls, mibs: MiB) -> "Cache":
-        return cls.from_kibs(mibs * 1024)
+    def from_mibs(cls, mib: MiB) -> "Cache":
+        return cls.from_kibs(mib * 1024)
+
+
+def div(left: int, right: int) -> int:
+    assert left % right == 0
+    return left // right
 
 
 if __name__ == "__main__":
