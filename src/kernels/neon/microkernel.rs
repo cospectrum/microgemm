@@ -1,5 +1,5 @@
 use super::NeonKernel;
-use crate::{typenum::U4, Kernel, MatMut, MatRef};
+use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
 use core::arch::aarch64::{
     vaddq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
 };
@@ -17,8 +17,7 @@ impl Kernel for NeonKernel<f32> {
         beta: f32,
         dst: &mut MatMut<f32>,
     ) {
-        debug_assert_eq!(dst.row_stride(), 1);
-        debug_assert_eq!(dst.col_stride(), 4);
+        dbg_check_microkernel_inputs(self, lhs, rhs, dst);
 
         let kc = lhs.ncols();
         neon_4x4_microkernel_f32(

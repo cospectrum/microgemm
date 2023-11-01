@@ -1,5 +1,5 @@
 use super::WasmSimd128Kernel;
-use crate::typenum::U4;
+use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4};
 
 use core::arch::wasm32::*;
 
@@ -16,10 +16,7 @@ impl crate::Kernel for WasmSimd128Kernel<f32> {
         beta: Self::Scalar,
         dst: &mut crate::MatMut<Self::Scalar>,
     ) {
-        debug_assert_eq!(dst.nrows(), Self::MR);
-        debug_assert_eq!(dst.ncols(), Self::NR);
-        debug_assert_eq!(dst.row_stride(), 1);
-        debug_assert_eq!(dst.col_stride(), 4);
+        dbg_check_microkernel_inputs(self, lhs, rhs, dst);
 
         let kc = lhs.ncols();
         wasm_simd128_4x4_microkernel_f32(
