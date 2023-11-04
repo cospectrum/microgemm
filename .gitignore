@@ -196,6 +196,7 @@ Cargo.lock
 !examples
 !benches
 !src
+!logo.png
 
 !microgemm
 !check_no_std
