@@ -1,4 +1,4 @@
-name: fmt
+name: msrv
 
 permissions:
   contents: read
