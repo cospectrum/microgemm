@@ -1,3 +1,5 @@
+<img align="middle" src="./logo.png" width="200" height="200" alt="microgemm">
+
 # microgemm
 [![github]](https://github.com/cospectrum/microgemm)
 [![latest_version]][crates.io]
