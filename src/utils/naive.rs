@@ -94,4 +94,29 @@ mod tests {
         naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut());
         assert_eq!(c.as_slice(), expect);
     }
+
+    #[test]
+    #[rustfmt::skip]
+    fn fixed_3() {
+        let a = [
+            1, 0, 2,
+            0, -1, 3,
+        ];
+        let a = &MatRef::new(2, 3, a.as_ref(), Layout::RowMajor);
+        let b = [
+            2, -1,
+            0, 5,
+            1, 1,
+        ];
+        let b = &MatRef::new(3, 2, b.as_ref(), Layout::RowMajor);
+
+        let mut c = [-9; 2 * 2];
+        let c = &mut MatMut::new(2, 2, c.as_mut(), Layout::RowMajor);
+        let expect = [
+            4, 1,
+            3, -2,
+        ];
+        naive_gemm(1, a, b, 0, c);
+        assert_eq!(c.as_slice(), expect);
+    }
 }
