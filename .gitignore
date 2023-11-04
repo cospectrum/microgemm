@@ -182,6 +182,7 @@ Cargo.lock
 /*
 
 !.gitignore
+!.github
 !.pre-commit-config.yaml
 !README.md
 !LICENSE-APACHE
@@ -189,14 +190,11 @@ Cargo.lock
 !CONTRIBUTING.md
 !Cargo.toml
 !Makefile.toml
-
-!.github
+!assets
 
 !tests
 !examples
 !benches
 !src
-!logo.png
 
-!microgemm
 !check_no_std

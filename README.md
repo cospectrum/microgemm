@@ -1,4 +1,4 @@
-<img align="middle" src="./logo.png" width="200" height="200" alt="microgemm">
+<img align="middle" src="./assets/logo.png" width="260px" alt="αAB + βC">
 
 # microgemm
 [![github]](https://github.com/cospectrum/microgemm)
@@ -15,18 +15,10 @@ Supports `no_std` and `no_alloc` environments.
 
 The implementation is based on the BLIS microkernel approach.
 
-## Usage
+## Getting Started
 
 The `Kernel` trait is the main abstraction of `microgemm`.
 You can implement it yourself or use kernels that are already provided out of the box.
-
-### Implemented Kernels
-
-| Name | Scalar Types | Target |
-| ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
-| NeonKernel | f32 | AArch64 and target feature neon |
-| WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
 ### gemm
 
@@ -65,6 +57,13 @@ fn main() {
 ```
 Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
 
+### Implemented Kernels
+
+| Name | Scalar Types | Target |
+| ---- | ------------ | ------ |
+| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
+| NeonKernel | f32 | aarch64 and target feature neon |
+| WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
 ### Custom Kernel Implementation
 
@@ -107,13 +106,12 @@ impl Kernel for CustomKernel {
 
 ## Benchmarks
 
-All benchmarks are performed on square matrices of dimension `n` and <br>
-with `pack_sizes == PackSizes { mc: n, kc: n, nc: n }`.
+All benchmarks are performed on square matrices of dimension `n`.
 
-### AArch64 (M1)
+### f32
+`PackSizes { mc: n, kc: n, nc: n }`
 
-#### f32
-
+####  aarch64 (M1)
 ```
    n    NeonKernel    Generic4x4    Generic8x8  naive(rustc)
   32        10.7µs        13.9µs        12.7µs        53.2µs
