@@ -11,11 +11,18 @@ env:
   RUSTFLAGS: "-Dwarnings"
 
 jobs:
-  clippy_check:
+  clippy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: clippy
         run: cargo clippy --all-targets --all-features
-      - name: clippy-wasm
+  clippy_wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - name: clippy
         run: cargo clippy --target wasm32-unknown-unknown --all-features
