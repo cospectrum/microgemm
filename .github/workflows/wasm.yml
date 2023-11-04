@@ -1,4 +1,4 @@
-name: wasm-pack test
+name: wasm
 
 on:
   push:
@@ -12,8 +12,18 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Install
+      - name: install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - name: check
+        run: cargo check --target wasm32-unknown-unknown
+        env:
+          RUSFLAGS: -D warnings
+
+      - name: check-simd128
+        run: cargo check --target wasm32-unknown-unknown
+        env:
+          RUSFLAGS: -D warnings -C target-feature=+simd128
 
       - run: RUSTFLAGS="-D warnings -C target-feature=+simd128" wasm-pack test --headless --chrome --release
       - run: RUSTFLAGS="-D warnings -C target-feature=+simd128" wasm-pack test --headless --firefox --release

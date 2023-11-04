@@ -173,7 +173,7 @@ dependencies = ["clippy-wasm"]
 
 [tasks.doc]
 toolchain = "nightly"
-env = { "RUSTDOCFLAGS" = "-D warnings" }
+env = { "RUSTDOCFLAGS" = "-D warnings --cfg docsrs" }
 command = "cargo"
 args = ["doc", "--no-deps", "--all-features"]
 

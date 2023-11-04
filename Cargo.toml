@@ -5,7 +5,10 @@ edition = "2021"
 authors = ["cospectrum"]
 rust-version = "1.65.0"
 
-description = "General matrix multiplication with custom configuration in Rust. Supports no_std and no_alloc environments."
+description = """
+General matrix multiplication with custom configuration in Rust.
+Supports no_std and no_alloc environments.
+"""
 license = "MIT OR Apache-2.0"
 
 repository = "https://github.com/cospectrum/microgemm"
