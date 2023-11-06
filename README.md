@@ -1,4 +1,4 @@
-<img align="middle" src="./assets/logo.png" width="260px" alt="αAB + βC">
+<img align="middle" src="./assets/logo.png" width="240px" alt="αAB + βC">
 
 # microgemm
 [![github]](https://github.com/cospectrum/microgemm)
@@ -63,7 +63,6 @@ Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
 | ---- | ------------ | ------ |
 | GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel | f32 | aarch64 and target feature neon |
-| WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
 ### Custom Kernel Implementation
 

@@ -62,10 +62,8 @@ println!("{:?}", c.as_slice());
 | ---- | ------------ | ------ |
 | GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | [`NeonKernel`] | f32 | aarch64 and target feature neon |
-| [`WasmSimd128Kernel`] | f32 | wasm32 and target feature simd128 |
 
 [`NeonKernel`]: crate::kernels::NeonKernel
-[`WasmSimd128Kernel`]: crate::kernels::WasmSimd128Kernel
 
 ### Custom Kernel Implementation
 

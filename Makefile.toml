@@ -20,16 +20,6 @@ args = ["target", "add", "thumbv7em-none-eabihf"]
 
 ############################################################
 
-[tasks.--build-wasm32-simd128]
-env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
-command = "cargo"
-args = ["build", "--target", "wasm32-unknown-unknown"]
-dependencies = ["install-wasm32-unknown-unknown"]
-
-[tasks.build-wasm32-simd128]
-env = { "RUSTFLAGS" = {unset = true} }
-dependencies = ["--build-wasm32-simd128"]
-
 [tasks.build-wasm32]
 command = "cargo"
 args = ["build", "--target", "wasm32-unknown-unknown"]
@@ -67,29 +57,12 @@ args = ["build"]
 dependencies = [
     "build-aarch64-unknown-none",
     "build-wasm32",
-    "build-wasm32-simd128",
     "build-thumbv7em-none-eabihf",
     "build-x86_64-unknown-none",
     "check-no-std",
 ]
 
 ############################################################
-
-[tasks.--example-wasm-simd128]
-env = { "RUSTFLAGS" = "-C target-feature=+simd128" }
-command = "cargo"
-args = [
-    "build",
-    "--manifest-path",
-    "examples/wasm_simd128/Cargo.toml",
-    "--target",
-    "wasm32-unknown-unknown",
-]
-dependencies = ["install-wasm32-unknown-unknown"]
-
-[tasks.example-wasm-simd128]
-env = { "RUSTFLAGS" = {unset = true} }
-dependencies = ["--example-wasm-simd128"]
 
 [tasks.example-f16]
 command = "cargo"
@@ -102,12 +75,12 @@ args = [
 [tasks.examples]
 command = "cargo"
 args = ["build", "--examples"]
-dependencies = ["example-wasm-simd128", "example-f16"]
+dependencies = ["example-f16"]
 
 ############################################################
 
 [tasks.--test-firefox]
-env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
+env = { "RUSTFLAGS" = "-D warnings" }
 command = "wasm-pack"
 args = ["test", "--headless", "--firefox", "--release"]
 dependencies = ["install-wasm-pack"]
@@ -117,7 +90,7 @@ env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--test-firefox"]
 
 [tasks.test-node]
-env = { "RUSTFLAGS" = "-D warnings -C target-feature=+simd128" }
+env = { "RUSTFLAGS" = "-D warnings" }
 command = "wasm-pack"
 args = ["test", "--node", "--release"]
 dependencies = ["install-wasm-pack"]

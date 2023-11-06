@@ -1,14 +1,10 @@
 #![cfg(target_arch = "wasm32")]
-use microgemm::{kernels::WasmSimd128Kernel, Kernel, Layout, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::Generic4x4Kernel, Kernel, Layout, MatMut, MatRef, PackSizes};
 use wasm_bindgen_test::*;
 
 #[wasm_bindgen_test]
 fn test_wasm_simd128_f32() {
-    let kernel = if cfg!(target_feature = "simd128") {
-        unsafe { WasmSimd128Kernel::<f32>::new() }
-    } else {
-        panic!("simd128 feature is not enabled");
-    };
+    let kernel = Generic4x4Kernel::<f32>::new();
     let a = [1., 2., 3., 4., 5., 6.];
     let b = [10., 11., 20., 21., 30., 31.];
     let mut c = vec![0f32; 2 * 2];
