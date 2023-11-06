@@ -118,7 +118,7 @@ where
         beta: T,
         c: &mut MatMut<T>,
         _: impl AsRef<PackSizes>,
-        _: impl AsMut<[T]>,
+        _: &mut [T],
     ) {
         naive_gemm(alpha, a, b, beta, c);
     }

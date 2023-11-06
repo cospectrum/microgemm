@@ -127,7 +127,7 @@ impl Kernel for NaiveKernel {
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
         _: impl AsRef<PackSizes>,
-        _: impl AsMut<[Self::Scalar]>,
+        _: &mut [Self::Scalar],
     ) {
         assert_eq!(a.nrows(), c.nrows());
         assert_eq!(b.ncols(), c.ncols());

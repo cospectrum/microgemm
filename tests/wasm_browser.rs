@@ -18,7 +18,7 @@ fn test_wasm_simd128_f32() {
         kc: 2,
         nc: kernel.nr(),
     };
-    let packing_buf = vec![0f32; pack_sizes.buf_len()];
+    let mut packing_buf = vec![0f32; pack_sizes.buf_len()];
     kernel.gemm(
         1f32,
         a.as_ref(),
@@ -26,7 +26,7 @@ fn test_wasm_simd128_f32() {
         0f32,
         c.as_mut(),
         pack_sizes,
-        packing_buf,
+        packing_buf.as_mut(),
     );
     assert_eq!(c.as_slice(), [140., 146., 320., 335.]);
 }
