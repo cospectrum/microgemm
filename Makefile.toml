@@ -212,13 +212,12 @@ dependencies = [
     "fmt",
     "check",
     "clippy",
-    "tests",
     "build",
     "examples",
 ]
 
 [tasks.all]
-dependencies = ["bench", "pre-commit"]
+dependencies = ["bench", "tests", "pre-commit"]
 
 [tasks.publish]
 command = "cargo"
