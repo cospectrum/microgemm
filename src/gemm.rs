@@ -43,12 +43,10 @@ pub(crate) fn gemm_with_kernel<T, K>(
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let rhs_layout =
-                crate::packing::pack_b(nr, pack_sizes, bpack, b, pc..pc + kc, jc..jc + nc);
+            let rhs_layout = crate::packing::pack_b(nr, bpack, b, pc..pc + kc, jc..jc + nc);
 
             for ic in (0..m).step_by(mc) {
-                let lhs_layout =
-                    crate::packing::pack_a(mr, pack_sizes, apack, a, ic..ic + mc, pc..pc + kc);
+                let lhs_layout = crate::packing::pack_a(mr, apack, a, ic..ic + mc, pc..pc + kc);
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
                     let rhs_values = &bpack[kc * nr * l2..kc * nr * (l2 + 1)];

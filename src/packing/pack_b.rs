@@ -1,11 +1,10 @@
-use crate::{packing::block::RowMajor, Layout, MatRef, PackSizes};
+use crate::{packing::block::RowMajor, Layout, MatRef};
 use core::ops::Range;
 use num_traits::{One, Zero};
 
 #[inline]
 pub(crate) fn pack_b<T>(
     nr: usize,
-    pack_sizes: &PackSizes,
     bpack: &mut [T],
     b: &MatRef<T>,
     b_rows: Range<usize>,
@@ -14,12 +13,10 @@ pub(crate) fn pack_b<T>(
 where
     T: One + Zero + Copy,
 {
-    let kc = pack_sizes.kc;
-    let nc = pack_sizes.nc;
-    debug_assert_eq!(b_rows.len(), kc);
-    debug_assert_eq!(b_cols.len(), nc);
-    debug_assert_eq!(bpack.len(), kc * nc);
-    debug_assert_eq!(nc % nr, 0);
+    let kc = b_rows.len();
+    let nc = b_cols.len();
+    assert_eq!(bpack.len(), kc * nc);
+    assert_eq!(nc % nr, 0);
 
     let start = b_cols.start;
     for i in 0..nc / nr {

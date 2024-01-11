@@ -1,6 +1,6 @@
 [package]
 name = "microgemm"
-version = "0.2.0-pre"
+version = "0.2.0-alpha"
 edition = "2021"
 authors = ["cospectrum"]
 rust-version = "1.65.0"
