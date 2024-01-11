@@ -13,7 +13,7 @@
 General matrix multiplication with custom configuration in Rust. <br>
 Supports `no_std` and `no_alloc` environments.
 
-The implementation is based on the BLIS microkernel approach.
+The implementation is based on the [BLIS](https://github.com/flame/blis) microkernel approach.
 
 ## Getting Started
 
@@ -86,15 +86,15 @@ impl Kernel for CustomKernel {
         beta: f64,
         dst: &mut MatMut<f64>,
     ) {
-        // lhs is col-major by default
+        // lhs is col-major
         assert_eq!(lhs.row_stride(), 1);
         assert_eq!(lhs.nrows(), Self::MR);
 
-        // rhs is row-major by default
+        // rhs is row-major
         assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
 
-        // dst is col-major by default
+        // dst is col-major
         assert_eq!(dst.row_stride(), 1);
         assert_eq!(dst.nrows(), Self::MR);
         assert_eq!(dst.ncols(), Self::NR);
