@@ -7,22 +7,25 @@ pub(crate) fn pack_a<T>(
     mr: usize,
     apack: &mut [T],
     a: &MatRef<T>,
-    a_rows: Range<usize>,
-    a_cols: Range<usize>,
+    rows: Range<usize>,
+    cols: Range<usize>,
 ) -> Layout
 where
     T: One + Zero + Copy,
 {
-    let mc = a_rows.len();
-    let kc = a_cols.len();
+    let mc = rows.len();
+    let kc = cols.len();
     assert_eq!(apack.len(), mc * kc);
     assert_eq!(mc % mr, 0);
+    assert!(kc <= a.ncols());
 
-    let start = a_rows.start;
+    let block_size = mr * kc;
+    let start = rows.start;
+
     for i in 0..mc / mr {
-        let buf = &mut apack[mr * kc * i..mr * kc * (i + 1)];
+        let buf = &mut apack[block_size * i..block_size * (i + 1)];
         let rows = start + mr * i..start + mr * (i + 1);
-        ColMajor(buf).init_from(a, rows, a_cols.clone());
+        ColMajor(buf).init_from(a, rows, cols.clone());
     }
     Layout::ColMajor
 }

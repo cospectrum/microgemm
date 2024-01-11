@@ -25,7 +25,7 @@ pub(crate) fn gemm_with_kernel<T, K>(
     let (apack, bpack) = pack_sizes.split_buf(packing_buf);
 
     let zero = T::zero();
-    let mut dst_buf: GenericArray<T, Product<K::Mr, K::Nr>> = GenericArray::generate(|_| zero);
+    let mut dst_buf = GenericArray::<T, Product<K::Mr, K::Nr>>::generate(|_| zero);
     let dst_buf = dst_buf.as_mut_slice();
 
     assert_eq!(a.nrows(), c.nrows());
@@ -43,19 +43,35 @@ pub(crate) fn gemm_with_kernel<T, K>(
     for jc in (0..n).step_by(nc) {
         for (l4, pc) in (0..k).step_by(kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
-            let rhs_layout = crate::packing::pack_b(nr, bpack, b, pc..pc + kc, jc..jc + nc);
+
+            let kc = (pc + kc).min(k) - pc;
+            debug_assert!(kc + pc <= k);
+            let apack = &mut apack[..mc * kc];
+            let bpack = &mut bpack[..kc * nc];
+
+            let rhs_layout = {
+                let rows = pc..pc + kc;
+                let cols = jc..jc + nc;
+                crate::packing::pack_b(nr, bpack, b, rows, cols)
+            };
 
             for ic in (0..m).step_by(mc) {
-                let lhs_layout = crate::packing::pack_a(mr, apack, a, ic..ic + mc, pc..pc + kc);
+                let lhs_layout = {
+                    let rows = ic..ic + mc;
+                    let cols = pc..pc + kc;
+                    crate::packing::pack_a(mr, apack, a, rows, cols)
+                };
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
-                    let rhs_values = &bpack[kc * nr * l2..kc * nr * (l2 + 1)];
+                    let rsize = kc * nr;
+                    let rhs_values = &bpack[rsize * l2..rsize * (l2 + 1)];
                     let rhs = MatRef::new(kc, nr, rhs_values, rhs_layout);
 
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
-                        let lhs_values = &apack[kc * mr * l1..kc * mr * (l1 + 1)];
+                        let lsize = mr * kc;
+                        let lhs_values = &apack[lsize * l1..lsize * (l1 + 1)];
                         let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
 
                         let dst_rows = ic + ir..ic + ir + mr;
@@ -65,8 +81,7 @@ pub(crate) fn gemm_with_kernel<T, K>(
                             dst_rows.clone(),
                             dst_cols.clone(),
                         );
-                        let mut dst =
-                            MatMut::new(dst_rows.len(), dst_cols.len(), dst_buf, dst_layout);
+                        let mut dst = MatMut::new(mr, nr, dst_buf, dst_layout);
                         kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
                         crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
