@@ -4,11 +4,9 @@ mod registers;
 mod sizes;
 
 mod colmajor;
-mod rowmajor;
 
 pub(crate) mod block {
     pub(crate) use super::colmajor::ColMajor;
-    pub(crate) use super::rowmajor::RowMajor;
 }
 pub(crate) use pack_a::pack_a;
 pub(crate) use pack_b::pack_b;
