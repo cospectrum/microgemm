@@ -19,14 +19,14 @@ fn bench_neon_gemm_f32() {
 
     let sizes = (5..11).map(|x| 2usize.pow(x));
     println!(
-        "{0:>4} {1:>13} {2:>13} {3:>13}",
+        "{0:>4} {1:>14} {2:>14} {3:>14}",
         "n", "NeonKernel", "matrixmultiply", "naive(rustc)"
     );
     for n in sizes {
         let t_neon = display_duration(time_with(&neon_kernel, n, TRIES));
         let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
         let t_naive = display_duration(time_with(&naive_kernel, n, TRIES));
-        println!("{0:>4} {1:>13} {2:>13} {3:>13}", n, t_neon, t_mt, t_naive,);
+        println!("{0:>4} {1:>14} {2:>14} {3:>14}", n, t_neon, t_mt, t_naive,);
     }
 }
 
