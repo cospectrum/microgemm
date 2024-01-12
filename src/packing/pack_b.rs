@@ -2,6 +2,7 @@ use crate::MatRef;
 use core::ops::Range;
 use num_traits::{One, Zero};
 
+// split submatrix to row-major blocks
 #[inline]
 pub(crate) fn pack_b<T>(
     nr: usize,
@@ -18,7 +19,7 @@ pub(crate) fn pack_b<T>(
     assert_eq!(nc % nr, 0);
 
     assert!(rows.end <= b.nrows());
-    assert!(cols.start <= b.ncols());
+    assert!(cols.start < b.ncols());
 
     let start = cols.start;
     let blocks = nc / nr;
@@ -35,16 +36,19 @@ pub(crate) fn pack_b<T>(
         }
     }
 
+    let zero = T::zero();
     let i = blocks - 1;
     let cols = start + nr * i..start + nr * (i + 1);
+    let min = b.ncols().min(cols.end);
+
     for row in rows.clone() {
-        for col in cols.start..cols.end {
+        for col in cols.start..min {
             let dst = it.next().unwrap();
-            if col < b.ncols() {
-                *dst = b.get(row, col);
-            } else {
-                *dst = T::zero();
-            }
+            *dst = b.get(row, col);
+        }
+        for _ in min..cols.end {
+            let dst = it.next().unwrap();
+            *dst = zero;
         }
     }
 }
