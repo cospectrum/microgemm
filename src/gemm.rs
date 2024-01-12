@@ -45,7 +45,11 @@ pub(crate) fn gemm_with_kernel<T, K>(
             let beta = if l4 == 0 { beta } else { One::one() };
 
             let kc = (pc + kc).min(k) - pc;
-            debug_assert!(kc + pc <= k);
+            debug_assert!(pc + kc <= k);
+
+            let tail = nr - (n % nr);
+            let nc = (jc + nc).min(n + tail) - jc;
+            debug_assert!(jc + nc <= n + tail);
 
             let bpack = {
                 let rows = pc..pc + kc;
@@ -56,6 +60,10 @@ pub(crate) fn gemm_with_kernel<T, K>(
             };
 
             for ic in (0..m).step_by(mc) {
+                let tail = mr - (m % mr);
+                let mc = (ic + mc).min(m + tail) - ic;
+                debug_assert!(ic + mc <= m + tail);
+
                 let apack = {
                     let rows = ic..ic + mc;
                     let cols = pc..pc + kc;
