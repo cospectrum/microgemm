@@ -1,5 +1,5 @@
 use crate::kernel::Multiply;
-use crate::{Kernel, MatMut, MatRef, PackSizes};
+use crate::{Kernel, Layout, MatMut, MatRef, PackSizes};
 use generic_array::{sequence::GenericSequence, GenericArray};
 use num_traits::{One, Zero};
 
@@ -46,33 +46,35 @@ pub(crate) fn gemm_with_kernel<T, K>(
 
             let kc = (pc + kc).min(k) - pc;
             debug_assert!(kc + pc <= k);
-            let apack = &mut apack[..mc * kc];
-            let bpack = &mut bpack[..kc * nc];
 
-            let rhs_layout = {
+            let bpack = {
                 let rows = pc..pc + kc;
                 let cols = jc..jc + nc;
-                crate::packing::pack_b(nr, bpack, b, rows, cols)
+                let bpack = &mut bpack[..kc * nc];
+                crate::packing::pack_b(nr, bpack, b, rows, cols);
+                bpack
             };
 
             for ic in (0..m).step_by(mc) {
-                let lhs_layout = {
+                let apack = {
                     let rows = ic..ic + mc;
                     let cols = pc..pc + kc;
-                    crate::packing::pack_a(mr, apack, a, rows, cols)
+                    let apack = &mut apack[..mc * kc];
+                    crate::packing::pack_a(mr, apack, a, rows, cols);
+                    apack
                 };
 
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
                     let rsize = kc * nr;
                     let rhs_values = &bpack[rsize * l2..rsize * (l2 + 1)];
-                    let rhs = MatRef::new(kc, nr, rhs_values, rhs_layout);
+                    let rhs = MatRef::new(kc, nr, rhs_values, Layout::RowMajor);
 
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
                         let lsize = mr * kc;
                         let lhs_values = &apack[lsize * l1..lsize * (l1 + 1)];
-                        let lhs = MatRef::new(mr, kc, lhs_values, lhs_layout);
+                        let lhs = MatRef::new(mr, kc, lhs_values, Layout::ColMajor);
 
                         let dst_rows = ic + ir..ic + ir + mr;
                         let dst_layout = crate::packing::registers_from_c(

@@ -1,4 +1,4 @@
-use crate::{Layout, MatRef};
+use crate::MatRef;
 use core::ops::Range;
 use num_traits::{One, Zero};
 
@@ -9,13 +9,12 @@ pub(crate) fn pack_b<T>(
     b: &MatRef<T>,
     rows: Range<usize>,
     cols: Range<usize>,
-) -> Layout
-where
+) where
     T: One + Zero + Copy,
 {
     if b.ncols() < cols.end {
         pack_with_padding(nr, bpack, b, rows, cols);
-        return Layout::RowMajor;
+        return;
     };
 
     let kc = rows.len();
@@ -28,8 +27,9 @@ where
 
     let block_size = kc * nr;
     let start = cols.start;
+    let blocks = nc / nr;
 
-    for i in 0..nc / nr {
+    for i in 0..blocks {
         let buf = &mut bpack[block_size * i..block_size * (i + 1)];
         let cols = start + nr * i..start + nr * (i + 1);
 
@@ -42,7 +42,6 @@ where
             }
         }
     }
-    Layout::RowMajor
 }
 
 fn pack_with_padding<T>(

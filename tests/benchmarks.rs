@@ -12,26 +12,21 @@ fn bench_neon_gemm_f32() {
         println!("neon feature is not enabled, exiting...");
         return;
     };
-    let generic_4x4_kernel = mg::kernels::Generic4x4Kernel::<f32>::new();
-    let generic_8x8_kernel = mg::kernels::Generic8x8Kernel::<f32>::new();
     let naive_kernel = NaiveKernel;
+    let mt_kernel = MatrixMultiplyKernel;
 
     const TRIES: u32 = 5;
 
     let sizes = (5..11).map(|x| 2usize.pow(x));
     println!(
-        "{0:>4} {1:>13} {2:>13} {3:>13} {4:>13}",
-        "n", "NeonKernel", "Generic4x4", "Generic8x8", "naive(rustc)"
+        "{0:>4} {1:>13} {2:>13} {3:>13}",
+        "n", "NeonKernel", "matrixmultiply", "naive(rustc)"
     );
     for n in sizes {
         let t_neon = display_duration(time_with(&neon_kernel, n, TRIES));
-        let t_4x4 = display_duration(time_with(&generic_4x4_kernel, n, TRIES));
-        let t_8x8 = display_duration(time_with(&generic_8x8_kernel, n, TRIES));
+        let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
         let t_naive = display_duration(time_with(&naive_kernel, n, TRIES));
-        println!(
-            "{0:>4} {1:>13} {2:>13} {3:>13} {4:>13}",
-            n, t_neon, t_4x4, t_8x8, t_naive,
-        );
+        println!("{0:>4} {1:>13} {2:>13} {3:>13}", n, t_neon, t_mt, t_naive,);
     }
 }
 
@@ -144,6 +139,62 @@ impl Kernel for NaiveKernel {
                 let z = c.get_mut(i, j);
                 *z = alpha * dot + beta * *z;
             }
+        }
+    }
+}
+
+struct MatrixMultiplyKernel;
+
+impl Kernel for MatrixMultiplyKernel {
+    type Scalar = f32;
+    type Mr = mg::typenum::U1;
+    type Nr = mg::typenum::U1;
+
+    fn microkernel(
+        &self,
+        _: Self::Scalar,
+        _: &MatRef<Self::Scalar>,
+        _: &MatRef<Self::Scalar>,
+        _: Self::Scalar,
+        _: &mut MatMut<Self::Scalar>,
+    ) {
+        unreachable!()
+    }
+    fn gemm(
+        &self,
+        alpha: Self::Scalar,
+        a: &MatRef<Self::Scalar>,
+        b: &MatRef<Self::Scalar>,
+        beta: Self::Scalar,
+        c: &mut MatMut<Self::Scalar>,
+        _: impl AsRef<PackSizes>,
+        _: &mut [Self::Scalar],
+    ) {
+        let [m, k] = [a.nrows(), a.ncols()];
+        let n = b.ncols();
+        let [rsa, csa] = [a.row_stride(), a.col_stride()];
+        let [rsb, csb] = [b.row_stride(), b.col_stride()];
+        let [rsc, csc] = [c.row_stride(), c.col_stride()];
+        let a = a.as_slice().as_ptr();
+        let b = b.as_slice().as_ptr();
+        let c = c.as_mut_slice().as_mut_ptr();
+        unsafe {
+            matrixmultiply::sgemm(
+                m,
+                k,
+                n,
+                alpha,
+                a,
+                rsa as isize,
+                csa as isize,
+                b,
+                rsb as isize,
+                csb as isize,
+                beta,
+                c,
+                rsc as isize,
+                csc as isize,
+            );
         }
     }
 }
