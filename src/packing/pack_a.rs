@@ -2,7 +2,7 @@ use crate::MatRef;
 use core::ops::Range;
 use num_traits::{One, Zero};
 
-// split submatrix to col-major blocks
+// split the submatrix into col-major blocks
 #[inline]
 pub(crate) fn pack_a<T>(
     mr: usize,
@@ -29,9 +29,14 @@ pub(crate) fn pack_a<T>(
     for i in 0..blocks - 1 {
         let rows = start + mr * i..start + mr * (i + 1);
         for col in cols.clone() {
-            for row in rows.start..rows.end {
+            let idx = a.idx(rows.start, col);
+            let lane = a.as_slice()[idx..]
+                .iter()
+                .step_by(a.row_stride())
+                .take(rows.len());
+            for &row in lane {
                 let dst = it.next().unwrap();
-                *dst = a.get(row, col);
+                *dst = row;
             }
         }
     }
@@ -42,10 +47,19 @@ pub(crate) fn pack_a<T>(
     let min = a.nrows().min(rows.end);
 
     for col in cols.clone() {
-        for row in rows.start..min {
+        let range = rows.start..min;
+        let idx = a.idx(range.start, col);
+        let lane = a
+            .as_slice()
+            .iter()
+            .skip(idx)
+            .step_by(a.row_stride())
+            .take(range.len());
+        for &row in lane {
             let dst = it.next().unwrap();
-            *dst = a.get(row, col);
+            *dst = row;
         }
+
         for _ in min..rows.end {
             let dst = it.next().unwrap();
             *dst = zero;

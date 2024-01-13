@@ -106,21 +106,20 @@ impl Kernel for CustomKernel {
 
 ## Benchmarks
 
-All benchmarks are performed on square matrices of dimension `n`.
+All benchmarks are performed in a `single thread` on square matrices of dimension `n`.
 
 ### f32
 `PackSizes { mc: n, kc: n, nc: n }`
 
 ####  aarch64 (M1)
 
-```notrust
-   n    NeonKernel    Generic4x4    Generic8x8  naive(rustc)
-  32         3.7µs         4.6µs         4.2µs        14.2µs
-  64        17.2µs        25.8µs          22µs       101.4µs
- 128        90.6µs       164.7µs       129.5µs           1ms
- 256         509µs           1ms       837.5µs         8.9ms
- 512         3.3ms         8.4ms           6ms        93.9ms
-1024          25ms        66.3ms          46ms         880ms
+```
+   n     NeonKernel           faer matrixmultiply
+ 128        251.5µs        741.5µs        143.4µs
+ 256        828.3µs          3.7ms        993.6µs
+ 512          3.3ms         16.4ms          3.6ms
+1024         24.7ms        131.2ms         22.5ms
+2048        202.6ms             1s        183.7ms
 ```
 */
 

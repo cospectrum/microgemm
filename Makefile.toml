@@ -102,9 +102,9 @@ dependencies = [
     "test-node",
 ]
 
-[tasks.test-ignored]
+[tasks.benchmark]
 command = "cargo"
-args = ["test", "--release", "--", "--ignored", "--nocapture"]
+args = ["test", "--release", "--test", "benchmarks", "--", "--ignored", "--nocapture"]
 
 [tasks.tests]
 command = "cargo"
@@ -165,7 +165,7 @@ args = ["msrv", "verify"]
 [tasks.bench]
 command = "cargo"
 args = ["bench"]
-dependencies = ["test-ignored", "test-firefox"]
+dependencies = ["benchmark", "test-firefox"]
 
 [tasks.--sanitize-neon]
 toolchain = "nightly"
