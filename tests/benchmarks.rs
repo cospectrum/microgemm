@@ -5,33 +5,28 @@ use std::time::{Duration, Instant};
 #[ignore]
 #[test]
 #[cfg(target_arch = "aarch64")]
-fn bench_neon_gemm_f32() {
+fn bench_aarch64_f32() {
     let neon_kernel = if cfg!(target_feature = "neon") {
         unsafe { microgemm::kernels::NeonKernel::<f32>::new() }
     } else {
         println!("neon feature is not enabled, exiting...");
         return;
     };
-    let generic_4x4_kernel = mg::kernels::Generic4x4Kernel::<f32>::new();
-    let generic_8x8_kernel = mg::kernels::Generic8x8Kernel::<f32>::new();
-    let naive_kernel = NaiveKernel;
+    let mt_kernel = MatrixMultiplyKernel;
+    let faer_kernel = FaerKernel;
 
-    const TRIES: u32 = 5;
+    const TRIES: u32 = 6;
 
-    let sizes = (5..11).map(|x| 2usize.pow(x));
+    let sizes = (7..12).map(|x| 2usize.pow(x));
     println!(
-        "{0:>4} {1:>13} {2:>13} {3:>13} {4:>13}",
-        "n", "NeonKernel", "Generic4x4", "Generic8x8", "naive(rustc)"
+        "{0:>4} {1:>14} {2:>14} {3:>14}",
+        "n", "NeonKernel", "faer", "matrixmultiply",
     );
     for n in sizes {
+        let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
+        let t_faer = display_duration(time_with(&faer_kernel, n, TRIES));
         let t_neon = display_duration(time_with(&neon_kernel, n, TRIES));
-        let t_4x4 = display_duration(time_with(&generic_4x4_kernel, n, TRIES));
-        let t_8x8 = display_duration(time_with(&generic_8x8_kernel, n, TRIES));
-        let t_naive = display_duration(time_with(&naive_kernel, n, TRIES));
-        println!(
-            "{0:>4} {1:>13} {2:>13} {3:>13} {4:>13}",
-            n, t_neon, t_4x4, t_8x8, t_naive,
-        );
+        println!("{0:>4} {1:>14} {2:>14} {3:>14}", n, t_neon, t_faer, t_mt);
     }
 }
 
@@ -78,8 +73,8 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     let b = black_box(a.clone());
     let mut c = black_box(a.clone());
 
-    let a = &MatRef::new(n, n, a.as_ref(), Layout::RowMajor);
-    let b = &MatRef::new(n, n, b.as_ref(), Layout::ColMajor);
+    let a = &MatRef::new(n, n, a.as_ref(), Layout::ColMajor);
+    let b = &MatRef::new(n, n, b.as_ref(), Layout::RowMajor);
     let c = &mut MatMut::new(n, n, c.as_mut(), Layout::RowMajor);
 
     let pack_sizes = &PackSizes {
@@ -88,8 +83,8 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
         nc: n,
     };
     let mut packing_buf = vec![0f32; pack_sizes.buf_len()];
-    let alpha = 1f32;
-    let beta = 0f32;
+    let alpha = black_box(1f32);
+    let beta = black_box(0f32);
 
     let mut result = Duration::from_secs(u64::MAX);
     for _ in 0..tries as usize {
@@ -101,9 +96,9 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     result
 }
 
-struct NaiveKernel;
+struct FaerKernel;
 
-impl Kernel for NaiveKernel {
+impl Kernel for FaerKernel {
     type Scalar = f32;
     type Mr = mg::typenum::U1;
     type Nr = mg::typenum::U1;
@@ -116,9 +111,8 @@ impl Kernel for NaiveKernel {
         _: Self::Scalar,
         _: &mut MatMut<Self::Scalar>,
     ) {
-        unreachable!();
+        unreachable!()
     }
-
     fn gemm(
         &self,
         alpha: Self::Scalar,
@@ -127,23 +121,98 @@ impl Kernel for NaiveKernel {
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
         _: impl AsRef<PackSizes>,
-        _: impl AsMut<[Self::Scalar]>,
+        _: &mut [Self::Scalar],
     ) {
-        assert_eq!(a.nrows(), c.nrows());
-        assert_eq!(b.ncols(), c.ncols());
-        assert_eq!(a.ncols(), b.nrows());
+        let lhs = unsafe {
+            faer_core::mat::from_raw_parts::<f32>(
+                a.as_slice().as_ptr(),
+                a.nrows(),
+                a.ncols(),
+                a.row_stride() as isize,
+                a.col_stride() as isize,
+            )
+        };
+        let rhs = unsafe {
+            faer_core::mat::from_raw_parts::<f32>(
+                b.as_slice().as_ptr(),
+                b.nrows(),
+                b.ncols(),
+                b.row_stride() as isize,
+                b.col_stride() as isize,
+            )
+        };
+        let mut acc = unsafe {
+            faer_core::mat::from_raw_parts_mut::<f32>(
+                c.as_mut_slice().as_mut_ptr(),
+                c.nrows(),
+                c.ncols(),
+                c.row_stride() as isize,
+                c.col_stride() as isize,
+            )
+        };
+        faer_core::mul::matmul(
+            acc.as_mut(),
+            lhs.as_ref(),
+            rhs.as_ref(),
+            Some(alpha),
+            beta,
+            faer_core::Parallelism::None,
+        );
+    }
+}
 
-        let k = a.ncols();
+struct MatrixMultiplyKernel;
 
-        for i in 0..a.nrows() {
-            for j in 0..b.ncols() {
-                let dot = (0..k)
-                    .map(|h| a.get(i, h) * b.get(h, j))
-                    .reduce(|accum, x| accum + x)
-                    .unwrap();
-                let z = c.get_mut(i, j);
-                *z = alpha * dot + beta * *z;
-            }
+impl Kernel for MatrixMultiplyKernel {
+    type Scalar = f32;
+    type Mr = mg::typenum::U1;
+    type Nr = mg::typenum::U1;
+
+    fn microkernel(
+        &self,
+        _: Self::Scalar,
+        _: &MatRef<Self::Scalar>,
+        _: &MatRef<Self::Scalar>,
+        _: Self::Scalar,
+        _: &mut MatMut<Self::Scalar>,
+    ) {
+        unreachable!()
+    }
+    fn gemm(
+        &self,
+        alpha: Self::Scalar,
+        a: &MatRef<Self::Scalar>,
+        b: &MatRef<Self::Scalar>,
+        beta: Self::Scalar,
+        c: &mut MatMut<Self::Scalar>,
+        _: impl AsRef<PackSizes>,
+        _: &mut [Self::Scalar],
+    ) {
+        let [m, k] = [a.nrows(), a.ncols()];
+        let n = b.ncols();
+        let [rsa, csa] = [a.row_stride(), a.col_stride()];
+        let [rsb, csb] = [b.row_stride(), b.col_stride()];
+        let [rsc, csc] = [c.row_stride(), c.col_stride()];
+        let a = a.as_slice().as_ptr();
+        let b = b.as_slice().as_ptr();
+        let c = c.as_mut_slice().as_mut_ptr();
+        unsafe {
+            matrixmultiply::sgemm(
+                m,
+                k,
+                n,
+                alpha,
+                a,
+                rsa as isize,
+                csa as isize,
+                b,
+                rsb as isize,
+                csb as isize,
+                beta,
+                c,
+                rsc as isize,
+                csc as isize,
+            );
         }
     }
 }

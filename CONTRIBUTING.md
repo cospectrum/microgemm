@@ -5,8 +5,7 @@ All pull requests are welcome.
 ## TODO
 
 - Improve performance of "packing". <br>
-Right now it may be slow due to unnecessary zero padding.
-Loop ranges can be "stripped".
+Explore possible optimizations.
 
 ## Run CI locally
 
@@ -14,9 +13,9 @@ Loop ranges can be "stripped".
 
 1. rustc 1.65+
 2. cargo-make
-3. node
-4. firefox
-5. CMake
+3. CMake
+4. node
+5. firefox
 
 ### Run
 

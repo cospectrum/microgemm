@@ -1,31 +1,68 @@
-use crate::{packing::block::RowMajor, Layout, MatRef, PackSizes};
+use crate::MatRef;
 use core::ops::Range;
 use num_traits::{One, Zero};
 
+// split the submatrix into row-major blocks
 #[inline]
 pub(crate) fn pack_b<T>(
     nr: usize,
-    pack_sizes: &PackSizes,
     bpack: &mut [T],
     b: &MatRef<T>,
-    b_rows: Range<usize>,
-    b_cols: Range<usize>,
-) -> Layout
-where
+    rows: Range<usize>,
+    cols: Range<usize>,
+) where
     T: One + Zero + Copy,
 {
-    let kc = pack_sizes.kc;
-    let nc = pack_sizes.nc;
-    debug_assert_eq!(b_rows.len(), kc);
-    debug_assert_eq!(b_cols.len(), nc);
-    debug_assert_eq!(bpack.len(), kc * nc);
-    debug_assert_eq!(nc % nr, 0);
+    let kc = rows.len();
+    let nc = cols.len();
+    assert_eq!(bpack.len(), kc * nc);
+    assert_eq!(nc % nr, 0);
 
-    let start = b_cols.start;
-    for i in 0..nc / nr {
-        let buf = &mut bpack[kc * nr * i..kc * nr * (i + 1)];
+    assert!(rows.end <= b.nrows());
+    assert!(cols.start < b.ncols());
+
+    let start = cols.start;
+    let blocks = nc / nr;
+
+    let mut it = bpack.iter_mut();
+
+    for i in 0..blocks - 1 {
         let cols = start + nr * i..start + nr * (i + 1);
-        RowMajor(buf).init_from(b, b_rows.clone(), cols);
+        for row in rows.clone() {
+            let idx = b.idx(row, cols.start);
+            let lane = b.as_slice()[idx..]
+                .iter()
+                .step_by(b.col_stride())
+                .take(cols.len());
+            for &col in lane {
+                let dst = it.next().unwrap();
+                *dst = col;
+            }
+        }
     }
-    Layout::RowMajor
+
+    let zero = T::zero();
+    let i = blocks - 1;
+    let cols = start + nr * i..start + nr * (i + 1);
+    let min = b.ncols().min(cols.end);
+
+    for row in rows.clone() {
+        let range = cols.start..min;
+        let idx = b.idx(row, range.start);
+        let lane = b
+            .as_slice()
+            .iter()
+            .skip(idx)
+            .step_by(b.col_stride())
+            .take(range.len());
+        for &col in lane {
+            let dst = it.next().unwrap();
+            *dst = col;
+        }
+
+        for _ in min..cols.end {
+            let dst = it.next().unwrap();
+            *dst = zero;
+        }
+    }
 }

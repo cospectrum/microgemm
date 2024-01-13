@@ -1,4 +1,4 @@
-<img align="middle" src="./assets/logo.png" width="260px" alt="αAB + βC">
+<img align="middle" src="./assets/logo.png" width="240px" alt="αAB + βC">
 
 # microgemm
 [![github]](https://github.com/cospectrum/microgemm)
@@ -63,7 +63,6 @@ Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
 | ---- | ------------ | ------ |
 | GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel | f32 | aarch64 and target feature neon |
-| WasmSimd128Kernel | f32 | wasm32 and target feature simd128 |
 
 ### Custom Kernel Implementation
 
@@ -106,20 +105,20 @@ impl Kernel for CustomKernel {
 
 ## Benchmarks
 
-All benchmarks are performed on square matrices of dimension `n`.
+All benchmarks are performed in a `single thread` on square matrices of dimension `n`.
 
 ### f32
 `PackSizes { mc: n, kc: n, nc: n }`
 
 ####  aarch64 (M1)
+
 ```
-   n    NeonKernel    Generic4x4    Generic8x8  naive(rustc)
-  32        10.7µs        13.9µs        12.7µs        53.2µs
-  64        50.6µs          73µs        62.7µs       307.7µs
- 128       257.5µs       482.8µs       379.8µs         2.5ms
- 256           1ms           2ms         1.3ms         9.5ms
- 512         3.4ms         8.4ms           6ms        94.5ms
-1024          25ms        66.4ms        46.4ms       882.7ms
+   n     NeonKernel           faer matrixmultiply
+ 128        251.5µs        741.5µs        143.4µs
+ 256        828.3µs          3.7ms        993.6µs
+ 512          3.3ms         16.4ms          3.6ms
+1024         24.7ms        131.2ms         22.5ms
+2048        202.6ms             1s        183.7ms
 ```
 
 ## License
