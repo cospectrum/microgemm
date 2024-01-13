@@ -1,5 +1,5 @@
 use crate::std_prelude::*;
-use crate::{utils::naive_gemm, Kernel, Layout, MatMut, MatRef, One, PackSizes, Zero};
+use crate::{utils::naive_gemm, Kernel, MatMut, MatRef, One, PackSizes, Zero};
 use core::marker::PhantomData;
 use core::ops::{Add, Mul};
 use rand::Rng;
@@ -58,17 +58,29 @@ pub fn cmp_kernels_with_random_data<T, K1, K2>(
     let k = rng.gen_range(1..100);
     let n = rng.gen_range(1..100);
 
-    let random_layout = || toss_a_coin(Layout::RowMajor, Layout::ColMajor);
-
     let a = (0..m * k).map(|_| scalar()).collect::<Vec<T>>();
     let b = (0..k * n).map(|_| scalar()).collect::<Vec<T>>();
-    let a = MatRef::new(m, k, &a, random_layout());
-    let b = MatRef::new(k, n, &b, random_layout());
+
+    let a = if rng.gen_bool(0.5) {
+        MatRef::row_major(m, k, &a)
+    } else {
+        MatRef::col_major(m, k, &a)
+    };
+    let b = if rng.gen_bool(0.5) {
+        MatRef::row_major(k, n, &b)
+    } else {
+        MatRef::col_major(k, n, &b)
+    };
 
     let mut c1 = (0..m * n).map(|_| scalar()).collect::<Vec<T>>();
     let mut c2 = c1.clone();
-    let mut c1 = MatMut::new(m, n, &mut c1, random_layout());
-    let mut c2 = c1.with_values(&mut c2);
+
+    let mut c1 = if rng.gen_bool(0.5) {
+        MatMut::row_major(m, n, &mut c1)
+    } else {
+        MatMut::col_major(m, n, &mut c1)
+    };
+    let mut c2 = MatMut::from_parts(m, n, &mut c2, c1.row_stride(), c1.col_stride());
 
     let kc = rng.gen_range(1..k + 20);
     let pack_sizes = PackSizes { mc, kc, nc };

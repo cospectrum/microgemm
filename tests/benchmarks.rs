@@ -1,5 +1,4 @@
-use microgemm as mg;
-use microgemm::{Kernel, Layout, MatMut, MatRef, PackSizes};
+use microgemm::{typenum, Kernel, MatMut, MatRef, PackSizes};
 use std::time::{Duration, Instant};
 
 #[ignore]
@@ -73,9 +72,9 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     let b = black_box(a.clone());
     let mut c = black_box(a.clone());
 
-    let a = &MatRef::new(n, n, a.as_ref(), Layout::ColMajor);
-    let b = &MatRef::new(n, n, b.as_ref(), Layout::RowMajor);
-    let c = &mut MatMut::new(n, n, c.as_mut(), Layout::RowMajor);
+    let a = &MatRef::col_major(n, n, a.as_ref());
+    let b = &MatRef::row_major(n, n, b.as_ref());
+    let c = &mut MatMut::row_major(n, n, c.as_mut());
 
     let pack_sizes = &PackSizes {
         mc: n,
@@ -100,8 +99,8 @@ struct FaerKernel;
 
 impl Kernel for FaerKernel {
     type Scalar = f32;
-    type Mr = mg::typenum::U1;
-    type Nr = mg::typenum::U1;
+    type Mr = typenum::U1;
+    type Nr = typenum::U1;
 
     fn microkernel(
         &self,
@@ -165,8 +164,8 @@ struct MatrixMultiplyKernel;
 
 impl Kernel for MatrixMultiplyKernel {
     type Scalar = f32;
-    type Mr = mg::typenum::U1;
-    type Nr = mg::typenum::U1;
+    type Mr = typenum::U1;
+    type Nr = typenum::U1;
 
     fn microkernel(
         &self,
