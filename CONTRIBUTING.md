@@ -5,8 +5,7 @@ All pull requests are welcome.
 ## TODO
 
 - Improve performance of "packing". <br>
-Right now it may be slow due to unnecessary zero padding.
-Loop ranges can be "stripped".
+Explore possible optimizations.
 
 ## Run CI locally
 
