@@ -1,8 +1,4 @@
-mod layout;
-
 pub mod base;
-
-pub use layout::Layout;
 
 pub type MatRef<'a, T> = base::MatBase<&'a [T], T>;
 pub type MatMut<'a, T> = base::MatBase<&'a mut [T], T>;

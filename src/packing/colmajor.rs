@@ -51,7 +51,6 @@ impl<T> AsMut<[T]> for ColMajor<&mut [T]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Layout;
 
     #[rustfmt::skip]
     #[test]
@@ -60,7 +59,7 @@ mod tests {
             1, 2,
             3, 4,
         ];
-        let b = MatRef::new(2, 2, v.as_ref(), Layout::RowMajor);
+        let b = MatRef::row_major(2, 2, v.as_ref());
 
         let block = |rows: Range<usize>, cols: Range<usize>| {
             let mut buf = vec![-1; rows.len() * cols.len()];

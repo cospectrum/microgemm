@@ -1,5 +1,5 @@
 use crate::kernel::Multiply;
-use crate::{Kernel, Layout, MatMut, MatRef, PackSizes};
+use crate::{Kernel, MatMut, MatRef, PackSizes};
 use generic_array::{sequence::GenericSequence, GenericArray};
 use num_traits::{One, Zero};
 
@@ -75,23 +75,23 @@ pub(crate) fn gemm_with_kernel<T, K>(
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
                     let rsize = kc * nr;
                     let rhs_values = &bpack[rsize * l2..rsize * (l2 + 1)];
-                    let rhs = MatRef::new(kc, nr, rhs_values, Layout::RowMajor);
+                    let rhs = MatRef::row_major(kc, nr, rhs_values);
 
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
                         let lsize = mr * kc;
                         let lhs_values = &apack[lsize * l1..lsize * (l1 + 1)];
-                        let lhs = MatRef::new(mr, kc, lhs_values, Layout::ColMajor);
+                        let lhs = MatRef::col_major(mr, kc, lhs_values);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-                        let dst_layout = crate::packing::registers_from_c(
+                        crate::packing::registers_from_c(
                             dst_buf,
                             &c.to_ref(),
                             dst_rows.clone(),
                             dst_cols.clone(),
                         );
-                        let mut dst = MatMut::new(mr, nr, dst_buf, dst_layout);
+                        let mut dst = MatMut::col_major(mr, nr, dst_buf);
                         kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
                         crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
@@ -108,7 +108,6 @@ mod tests {
     use crate::{
         typenum::{U4, U5},
         utils::naive_gemm,
-        Layout,
     };
 
     struct TestKernel;
@@ -161,11 +160,11 @@ mod tests {
             13, 14,
             15, 16,
         ];
-        let a = MatRef::new(m, k, &a, Layout::RowMajor);
-        let b = MatRef::new(k, n, &b, Layout::RowMajor);
+        let a = MatRef::row_major(m, k, &a);
+        let b = MatRef::row_major(k, n, &b);
 
         let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
-        let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
+        let mut c = MatMut::row_major(m, n, c.as_mut());
 
         let pack_sizes = PackSizes { mc: 5 * TestKernel::MR,  kc: 2, nc: 2 * TestKernel::NR };
         let mut buf = vec![-9; pack_sizes.buf_len()];
@@ -195,13 +194,13 @@ mod tests {
             15, 16, -17,
             17, 18, -19,
         ];
-        let a = MatRef::new(m, k, &a, Layout::RowMajor);
-        let b = MatRef::new(k, n, &b, Layout::RowMajor);
+        let a = MatRef::row_major(m, k, &a);
+        let b = MatRef::row_major(k, n, &b);
 
         let mut c = (0..m * n).map(|x| x as i32).collect::<Vec<_>>();
         let mut expect = c.clone();
-        let mut c = MatMut::new(m, n, c.as_mut(), Layout::RowMajor);
-        let mut expect = MatMut::new(m, n, expect.as_mut(), Layout::RowMajor);
+        let mut c = MatMut::row_major(m, n, c.as_mut());
+        let mut expect = MatMut::row_major(m, n, expect.as_mut());
 
         let pack_sizes = PackSizes {
             mc: 2 * TestKernel::MR,
@@ -241,14 +240,14 @@ mod tests {
             -22, -18, -24, -23,
             -20, 14, 13, -22,
         ];
-        let a = MatRef::new(6, 4, &a, Layout::RowMajor);
+        let a = MatRef::row_major(6, 4, &a);
         let b = [
             2, -24, 20,
             -27, -1, -16,
             -12, -29, -26,
             -16, -13, -18,
         ];
-        let b = MatRef::new(4, 3, &b, Layout::RowMajor);
+        let b = MatRef::row_major(4, 3, &b);
         let mut c = vec![
             480, 417, -7102,
             2720, 13184, 2400,
@@ -258,8 +257,8 @@ mod tests {
             508, 627, -7298,
         ];
         let mut expect = c.clone();
-        let mut c = MatMut::new(6, 3, &mut c, Layout::RowMajor);
-        let mut expect = c.with_values(&mut expect);
+        let mut c = MatMut::row_major(6, 3, &mut c);
+        let mut expect = MatMut::row_major(6, 3, &mut expect);
 
         let alpha = 4;
         let beta = -3;

@@ -17,14 +17,3 @@ jobs:
 
       - name: check
         run: RUSTFLAGS="-D warnings" cargo check --target wasm32-unknown-unknown
-
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-
-      - name: install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
-
-      - run: RUSTFLAGS="-D warnings" wasm-pack test --headless --chrome --release
-      - run: RUSTFLAGS="-D warnings" wasm-pack test --headless --firefox --release

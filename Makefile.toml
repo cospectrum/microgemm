@@ -179,6 +179,7 @@ dependencies = ["--sanitize-neon"]
 
 [tasks.pre-commit]
 dependencies = [
+    "tests",
     "msrv",
     "semver",
     "doc",
@@ -190,7 +191,7 @@ dependencies = [
 ]
 
 [tasks.all]
-dependencies = ["bench", "tests", "pre-commit"]
+dependencies = ["bench", "pre-commit"]
 
 [tasks.publish]
 command = "cargo"

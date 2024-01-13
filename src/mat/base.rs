@@ -1,4 +1,3 @@
-use crate::Layout;
 use core::marker::PhantomData;
 use num_traits::Zero;
 
@@ -41,9 +40,6 @@ impl<V, T> MatBase<V, T> {
     pub fn col_stride(&self) -> usize {
         self.col_stride
     }
-    pub fn with_values(&self, values: V) -> Self {
-        Self { values, ..*self }
-    }
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
         row * self.row_stride + col * self.col_stride
     }
@@ -53,10 +49,6 @@ impl<V, T> MatBase<V, T>
 where
     V: AsRef<[T]>,
 {
-    pub fn new(nrows: usize, ncols: usize, values: V, layout: Layout) -> Self {
-        assert_eq!(values.as_ref().len(), nrows * ncols);
-        Self::new_unchecked(nrows, ncols, values, layout)
-    }
     pub fn row_major(nrows: usize, ncols: usize, values: V) -> Self {
         assert_eq!(values.as_ref().len(), nrows * ncols);
         let (row_stride, col_stride) = (ncols, 1);
@@ -67,22 +59,15 @@ where
         let (row_stride, col_stride) = (1, nrows);
         Self::from_parts(nrows, ncols, values, row_stride, col_stride)
     }
-    pub(crate) fn new_unchecked(nrows: usize, ncols: usize, values: V, layout: Layout) -> Self {
-        let (row_stride, col_stride) = match layout {
-            Layout::RowMajor => (ncols, 1),
-            Layout::ColMajor => (1, nrows),
-        };
-        Self::from_parts(nrows, ncols, values, row_stride, col_stride)
-    }
     /// Extracts a slice containing the matrix values.
     ///
     /// # Examples
     ///
     /// ```
-    /// use microgemm::{MatRef, Layout};
+    /// use microgemm::MatRef;
     ///
     /// let values = [1, 2, 3, 4];
-    /// let mat = MatRef::new(2, 2, &values, Layout::RowMajor);
+    /// let mat = MatRef::row_major(2, 2, &values);
     /// assert_eq!(mat.as_slice(), &values);
     /// ```
     pub fn as_slice(&self) -> &[T] {
@@ -107,10 +92,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use microgemm::{MatRef, Layout};
+    /// use microgemm::MatRef;
     ///
     /// let values = [1, 2, 3, 4];
-    /// let mat = MatRef::new(2, 2, &values, Layout::RowMajor);
+    /// let mat = MatRef::row_major(2, 2, &values);
     /// assert_eq!(mat.get(1, 0), 3);
     /// ```
     pub fn get(&self, row: usize, col: usize) -> T {
@@ -144,10 +129,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use microgemm::{MatMut, Layout};
+    /// use microgemm::MatMut;
     ///
     /// let mut values = [1, 2, 3, 4];
-    /// let mut mat = MatMut::new(2, 2, &mut values, Layout::RowMajor);
+    /// let mut mat = MatMut::row_major(2, 2, &mut values);
     /// assert_eq!(mat.as_mut_slice(), &mut [1, 2, 3, 4]);
     /// ```
     pub fn as_mut_slice(&mut self) -> &mut [T] {
@@ -165,10 +150,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// use microgemm::{MatMut, Layout};
+    /// use microgemm::MatMut;
     ///
     /// let mut values = [1, 2, 3, 4];
-    /// let mut mat = MatMut::new(2, 2, &mut values, Layout::RowMajor);
+    /// let mut mat = MatMut::row_major(2, 2, &mut values);
     /// let x = mat.get_mut(1, 0);
     /// assert_eq!(*x, 3);
     /// *x = 0;

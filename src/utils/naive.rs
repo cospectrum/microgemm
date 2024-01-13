@@ -26,7 +26,6 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Layout;
 
     #[rustfmt::skip]
     #[test]
@@ -40,11 +39,11 @@ mod tests {
             20, 21,
             30, 31,
         ];
-        let a = MatRef::new(2, 3, &a, Layout::RowMajor);
-        let b = MatRef::new(3, 2, &b, Layout::RowMajor);
+        let a = MatRef::row_major(2, 3, &a);
+        let b = MatRef::row_major(3, 2, &b);
 
         let mut c = [-1; 4];
-        let mut c = MatMut::new(2, 2, c.as_mut(), Layout::RowMajor);
+        let mut c = MatMut::row_major(2, 2, c.as_mut());
         let expect = [
             140, 146,
             320, 335,
@@ -53,7 +52,7 @@ mod tests {
         assert_eq!(c.as_slice(), expect);
 
         let mut c = [-1; 4];
-        let mut c = MatMut::new(2, 2, c.as_mut(), Layout::ColMajor);
+        let mut c = MatMut::col_major(2, 2, c.as_mut());
         let expect = [
             140, 320,
             146, 335,
@@ -87,9 +86,9 @@ mod tests {
             beta * c[3] + alpha * (4 * 5 + 5 * 6 + 6 * 7),
         ];
 
-        let a = MatRef::new(2, 3, a.as_ref(), Layout::RowMajor);
-        let b = MatRef::new(3, 2, b.as_ref(), Layout::ColMajor);
-        let mut c = MatMut::new(2, 2, c.as_mut(), Layout::RowMajor);
+        let a = MatRef::row_major(2, 3, a.as_ref());
+        let b = MatRef::col_major(3, 2, b.as_ref());
+        let mut c = MatMut::row_major(2, 2, c.as_mut());
 
         naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut());
         assert_eq!(c.as_slice(), expect);
@@ -102,16 +101,16 @@ mod tests {
             1, 0, 2,
             0, -1, 3,
         ];
-        let a = &MatRef::new(2, 3, a.as_ref(), Layout::RowMajor);
+        let a = &MatRef::row_major(2, 3, a.as_ref());
         let b = [
             2, -1,
             0, 5,
             1, 1,
         ];
-        let b = &MatRef::new(3, 2, b.as_ref(), Layout::RowMajor);
+        let b = &MatRef::row_major(3, 2, b.as_ref());
 
         let mut c = [-9; 2 * 2];
-        let c = &mut MatMut::new(2, 2, c.as_mut(), Layout::RowMajor);
+        let c = &mut MatMut::row_major(2, 2, c.as_mut());
         let expect = [
             4, 1,
             3, -2,

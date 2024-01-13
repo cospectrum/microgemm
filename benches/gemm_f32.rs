@@ -1,7 +1,8 @@
 use criterion::measurement::WallTime;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkGroup, Criterion};
-use microgemm as mg;
-use microgemm::{Kernel, Layout, MatMut, MatRef, PackSizes};
+
+use microgemm::kernels::Generic8x8Kernel;
+use microgemm::{Kernel, MatMut, MatRef, PackSizes};
 
 fn bench_gemm(criterion: &mut Criterion) {
     let group = &mut criterion.benchmark_group("bench-gemm-f32");
@@ -22,11 +23,12 @@ fn bench_gemm(criterion: &mut Criterion) {
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
-        let kernel = unsafe { &mg::kernels::NeonKernel::<f32>::new() };
+        use microgemm::kernels::NeonKernel;
+        let kernel = unsafe { &NeonKernel::<f32>::new() };
         bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
 
-    let kernel = &mg::kernels::Generic8x8Kernel::<f32>::new();
+    let kernel = &Generic8x8Kernel::<f32>::new();
     bench_kernel_with(group, "generic-kernel", kernel, mkn, pack_sizes);
 }
 
@@ -60,9 +62,9 @@ fn matrices<'a, T>(
     c: &'a mut [T],
 ) -> (MatRef<'a, T>, MatRef<'a, T>, MatMut<'a, T>) {
     let [m, k, n] = mkn;
-    let a = MatRef::new(m, k, a, Layout::RowMajor);
-    let b = MatRef::new(k, n, b, Layout::ColMajor);
-    let c = MatMut::new(m, n, c, Layout::RowMajor);
+    let a = MatRef::row_major(m, k, a);
+    let b = MatRef::col_major(k, n, b);
+    let c = MatMut::row_major(m, n, c);
     (a, b, c)
 }
 
