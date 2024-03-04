@@ -1,7 +1,3 @@
-[tasks.install-wasm-pack]
-command = "cargo"
-args = ["install", "wasm-pack"]
-
 [tasks.install-x86_64-unknown-none]
 command = "rustup"
 args = ["target", "add", "x86_64-unknown-none"]
@@ -79,39 +75,9 @@ dependencies = ["example-f16"]
 
 ############################################################
 
-[tasks.--test-firefox]
-env = { "RUSTFLAGS" = "-D warnings" }
-command = "wasm-pack"
-args = ["test", "--headless", "--firefox", "--release"]
-dependencies = ["install-wasm-pack"]
-
-[tasks.test-firefox]
-env = { "RUSTFLAGS" = {unset = true} }
-dependencies = ["--test-firefox"]
-
-[tasks.test-node]
-env = { "RUSTFLAGS" = "-D warnings" }
-command = "wasm-pack"
-args = ["test", "--node", "--release"]
-dependencies = ["install-wasm-pack"]
-
-[tasks.test-wasm]
-env = { "RUSTFLAGS" = {unset = true} }
-dependencies = [
-    "test-firefox",
-    "test-node",
-]
-
-[tasks.benchmark]
-command = "cargo"
-args = ["test", "--release", "--test", "benchmarks", "--", "--ignored", "--nocapture"]
-
 [tasks.tests]
 command = "cargo"
 args = ["test"]
-dependencies = ["test-wasm"]
-
-############################################################
 
 [tasks.fmt]
 command = "cargo"
@@ -127,22 +93,9 @@ command = "cargo"
 args = ["check"]
 dependencies = ["check-wasm"]
 
-[tasks.clippy-wasm]
-command = "cargo"
-args = [
-    "clippy",
-    "--target",
-    "wasm32-unknown-unknown",
-    "--all-features",
-    "--",
-    "-Dwarnings",
-]
-dependencies = ["install-wasm32-unknown-unknown"]
-
 [tasks.clippy]
 command = "cargo"
 args = ["clippy", "--all-targets", "--all-features", "--", "-Dwarnings"]
-dependencies = ["clippy-wasm"]
 
 [tasks.doc]
 toolchain = "nightly"
@@ -160,12 +113,14 @@ install_crate = "cargo-msrv"
 command = "cargo"
 args = ["msrv", "verify"]
 
-############################################################
+[tasks.comparison]
+command = "cargo"
+args = ["test", "--release", "--test", "comparison", "--", "--ignored", "--nocapture"]
 
 [tasks.bench]
 command = "cargo"
 args = ["bench"]
-dependencies = ["benchmark", "test-firefox"]
+dependencies = ["comparison"]
 
 [tasks.--sanitize-neon]
 toolchain = "nightly"
