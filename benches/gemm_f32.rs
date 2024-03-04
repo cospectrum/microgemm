@@ -23,8 +23,8 @@ fn bench_gemm(criterion: &mut Criterion) {
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
-        use microgemm::kernels::NeonKernel;
-        let kernel = unsafe { &NeonKernel::<f32>::new() };
+        use microgemm::kernels::NeonKernel4x4;
+        let kernel = unsafe { &NeonKernel4x4::<f32>::new() };
         bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
 

@@ -8,7 +8,7 @@ pub use generic::{
     Generic16x16Kernel, Generic2x2Kernel, Generic32x32Kernel, Generic4x4Kernel, Generic8x8Kernel,
 };
 #[cfg(any(target_arch = "aarch64", doc))]
-pub use neon::NeonKernel;
+pub use neon::NeonKernel4x4;
 
 fn dbg_check_microkernel_inputs<T, K>(_: &K, lhs: &MatRef<T>, rhs: &MatRef<T>, dst: &mut MatMut<T>)
 where

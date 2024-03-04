@@ -1,10 +1,10 @@
-use super::NeonKernel;
+use super::NeonKernel4x4;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
 use core::arch::aarch64::{
     vaddq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
 };
 
-impl Kernel for NeonKernel<f32> {
+impl Kernel for NeonKernel4x4<f32> {
     type Scalar = f32;
     type Mr = U4;
     type Nr = U4;
@@ -130,9 +130,9 @@ mod tests {
 
     use rand::{thread_rng, Rng};
 
-    fn neon_kernel<T>() -> NeonKernel<T> {
+    fn neon_kernel<T>() -> NeonKernel4x4<T> {
         if is_aarch64_feature_detected!("neon") {
-            unsafe { NeonKernel::new() }
+            unsafe { NeonKernel4x4::new() }
         } else {
             panic!("neon feature is not supported");
         }
