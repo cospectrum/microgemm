@@ -68,6 +68,7 @@ Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
 | ---- | ------------ | ------ |
 | GenericKernelNxN <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel4x4 | f32 | aarch64 and target feature neon |
+| NeonKernel8x8 | f32 | aarch64 and target feature neon |
 
 ### Custom Kernel Implementation
 
@@ -117,12 +118,12 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 
 ####  aarch64 (M1)
 ```
-   n  NeonKernel4x4           faer matrixmultiply
- 128        255.9µs        736.4µs        149.8µs
- 256        832.5µs          3.7ms        880.9µs
- 512          3.4ms         15.9ms          3.6ms
-1024           25ms        128.6ms         22.2ms
-2048          204ms             1s        180.8ms
+   n  NeonKernel8x8           faer matrixmultiply
+ 128         75.5µs        242.6µs         46.2µs
+ 256        466.3µs          3.2ms        518.2µs
+ 512            3ms         15.9ms          2.7ms
+1024         23.9ms        128.4ms           22ms
+2048          191ms             1s        182.8ms
 ```
 
 ## License

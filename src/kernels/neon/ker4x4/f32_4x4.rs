@@ -64,6 +64,7 @@ fn neon_4x4_microkernel_f32(
                 $cols[3] = vfmaq_laneq_f32::<3>($cols[3], $a, $b);
             };
         }
+
         for _ in 0..kc / 4 {
             let a = vld1q_f32(left);
             let b = vld1q_f32(right);
