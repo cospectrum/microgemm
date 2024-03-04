@@ -18,7 +18,6 @@ impl Kernel for NeonKernel4x4<f32> {
         dst: &mut MatMut<f32>,
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
-
         let kc = lhs.ncols();
         neon_4x4_microkernel_f32(
             kc,
