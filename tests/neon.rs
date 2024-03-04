@@ -1,15 +1,33 @@
 #![cfg(target_arch = "aarch64")]
 
-use microgemm::{kernels::NeonKernel4x4, Kernel, MatMut, MatRef, PackSizes};
+use microgemm::{
+    kernels::{NeonKernel4x4, NeonKernel8x8},
+    Kernel, MatMut, MatRef, PackSizes,
+};
 
 #[test]
-fn test_neon() {
+fn test_neon8x8() {
+    let kernel = if cfg!(target_feature = "neon") {
+        unsafe { NeonKernel8x8::<f32>::new() }
+    } else {
+        println!("neon feature is not supported");
+        return;
+    };
+    test_kernel_f32(kernel);
+}
+
+#[test]
+fn test_neon4x4() {
     let kernel = if cfg!(target_feature = "neon") {
         unsafe { NeonKernel4x4::<f32>::new() }
     } else {
         println!("neon feature is not supported");
         return;
     };
+    test_kernel_f32(kernel);
+}
+
+fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
     let a = [1., 2., 3., 4., 5., 6.];
     let b = [10., 11., 20., 21., 30., 31.];
     let mut c = vec![0f32; 2 * 2];
