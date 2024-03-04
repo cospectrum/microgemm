@@ -40,7 +40,7 @@ where
 }
 
 macro_rules! impl_generic_square_kernel {
-    ($struct:ident, $constant:literal, $num:ty) => {
+    ($struct:ident, $dim:literal, $dimty:ty) => {
         #[derive(Debug, Clone, Copy, Default)]
         pub struct $struct<T>(PhantomData<T>);
 
@@ -54,8 +54,8 @@ macro_rules! impl_generic_square_kernel {
             T: Copy + Zero + One + Add<Output = T> + Mul<Output = T>,
         {
             type Scalar = T;
-            type Mr = $num;
-            type Nr = $num;
+            type Mr = $dimty;
+            type Nr = $dimty;
 
             fn microkernel(
                 &self,
@@ -67,7 +67,7 @@ macro_rules! impl_generic_square_kernel {
             ) {
                 dbg_check_microkernel_inputs(self, lhs, rhs, dst);
 
-                const DIM: usize = $constant;
+                const DIM: usize = $dim;
                 let mut cols = [T::zero(); DIM * DIM];
                 loop_micropanels::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
                 write_cols_to_colmajor::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
