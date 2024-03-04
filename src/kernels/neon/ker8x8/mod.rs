@@ -1,15 +1,15 @@
 #[cfg(target_arch = "aarch64")]
-mod f32_4x4;
+mod f32_8x8;
 
 use core::marker::PhantomData;
 
 /// Available only for the `aarch64` target.
 #[derive(Debug, Clone, Copy)]
-pub struct NeonKernel4x4<T> {
+pub struct NeonKernel8x8<T> {
     marker: PhantomData<T>,
 }
 
-impl<T> NeonKernel4x4<T> {
+impl<T> NeonKernel8x8<T> {
     /// # Safety
     ///
     /// The caller must ensure that the created kernel will only be used in an
@@ -18,10 +18,10 @@ impl<T> NeonKernel4x4<T> {
     /// # Examples
     ///
     /// ```
-    /// use microgemm::kernels::NeonKernel4x4;
+    /// use microgemm::kernels::NeonKernel8x8;
     ///
     /// let kernel = if cfg!(target_feature = "neon") {
-    ///     unsafe { NeonKernel4x4::<f32>::new() }
+    ///     unsafe { NeonKernel8x8::<f32>::new() }
     /// } else {
     ///     panic!("neon target feature is not enabled");
     /// };
@@ -37,10 +37,10 @@ impl<T> NeonKernel4x4<T> {
 #[cfg(test)]
 mod tests {
     fn _check_new_neon() {
-        use crate::kernels::NeonKernel4x4;
+        use crate::kernels::NeonKernel8x8;
 
         let _kernel = if cfg!(target_feature = "neon") {
-            unsafe { NeonKernel4x4::<f32>::new() }
+            unsafe { NeonKernel8x8::<f32>::new() }
         } else {
             panic!("neon target feature is not enabled");
         };
