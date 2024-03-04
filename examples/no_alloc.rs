@@ -1,15 +1,15 @@
-use microgemm::{kernels::Generic4x4Kernel, Kernel as _, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::GenericKernel4x4, Kernel as _, MatMut, MatRef, PackSizes};
 
 const M: usize = 15;
 const K: usize = 16;
 const N: usize = 22;
 
-const KERNEL: Generic4x4Kernel<f32> = Generic4x4Kernel::<f32>::new();
+const KERNEL: GenericKernel4x4<f32> = GenericKernel4x4::<f32>::new();
 
 const PACK_SIZES: &PackSizes = &PackSizes {
-    mc: 2 * Generic4x4Kernel::<f32>::MR,
+    mc: 2 * GenericKernel4x4::<f32>::MR,
     kc: 16,
-    nc: 3 * Generic4x4Kernel::<f32>::NR,
+    nc: 3 * GenericKernel4x4::<f32>::NR,
 };
 
 fn main() {

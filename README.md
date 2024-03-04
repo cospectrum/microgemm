@@ -30,10 +30,10 @@ You can implement it yourself or use kernels that are already provided out of th
 ### gemm
 
 ```rust
-use microgemm::{kernels::Generic8x8Kernel, Kernel as _, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::GenericKernel8x8, Kernel as _, MatMut, MatRef, PackSizes};
 
 fn main() {
-    let kernel = Generic8x8Kernel::<f32>::new();
+    let kernel = GenericKernel8x8::<f32>::new();
     assert_eq!(kernel.mr(), 8);
     assert_eq!(kernel.nr(), 8);
 
@@ -66,7 +66,7 @@ Also see [no_alloc](./examples/no_alloc.rs) example for use without `Vec`.
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
+| GenericKernelNxN <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
 | NeonKernel4x4 | f32 | aarch64 and target feature neon |
 
 ### Custom Kernel Implementation

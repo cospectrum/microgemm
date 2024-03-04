@@ -125,7 +125,7 @@ mod tests {
     use std::arch::is_aarch64_feature_detected;
 
     use super::*;
-    use crate::kernels::Generic4x4Kernel;
+    use crate::kernels::GenericKernel4x4;
     use crate::utils::*;
 
     use rand::{thread_rng, Rng};
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_neon_f32() {
-        let generic_kernel = &Generic4x4Kernel::<f32>::new();
+        let generic_kernel = &GenericKernel4x4::<f32>::new();
         let neon_kernel = &neon_kernel::<f32>();
 
         let mut rng = thread_rng();
