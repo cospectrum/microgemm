@@ -13,7 +13,7 @@ Explore possible optimizations.
 
 1. rustc 1.65+, cargo
 2. cargo-make
-3. CMake
+3. CMake (for cargo-semver-checks)
 
 ### Run
 

@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 #[cfg(target_arch = "aarch64")]
 fn bench_aarch64_f32() {
     let neon_kernel = if cfg!(target_feature = "neon") {
-        unsafe { microgemm::kernels::NeonKernel4x4::<f32>::new() }
+        unsafe { microgemm::kernels::NeonKernel8x8::<f32>::new() }
     } else {
         println!("neon feature is not enabled, exiting...");
         return;
@@ -19,12 +19,12 @@ fn bench_aarch64_f32() {
     let sizes = (7..12).map(|x| 2usize.pow(x));
     println!(
         "{0:>4} {1:>14} {2:>14} {3:>14}",
-        "n", "NeonKernel4x4", "faer", "matrixmultiply",
+        "n", "NeonKernel8x8", "faer", "matrixmultiply",
     );
     for n in sizes {
-        let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
-        let t_faer = display_duration(time_with(&faer_kernel, n, TRIES));
         let t_neon = display_duration(time_with(&neon_kernel, n, TRIES));
+        let t_faer = display_duration(time_with(&faer_kernel, n, TRIES));
+        let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
         println!("{0:>4} {1:>14} {2:>14} {3:>14}", n, t_neon, t_faer, t_mt);
     }
 }
