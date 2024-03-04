@@ -116,14 +116,13 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 `PackSizes { mc: n, kc: n, nc: n }`
 
 ####  aarch64 (M1)
-
 ```
-   n     NeonKernel4x4           faer matrixmultiply
- 128        251.5µs        741.5µs        143.4µs
- 256        828.3µs          3.7ms        993.6µs
- 512          3.3ms         16.4ms          3.6ms
-1024         24.7ms        131.2ms         22.5ms
-2048        202.6ms             1s        183.7ms
+   n  NeonKernel4x4           faer matrixmultiply
+ 128        255.9µs        736.4µs        149.8µs
+ 256        832.5µs          3.7ms        880.9µs
+ 512          3.4ms         15.9ms          3.6ms
+1024           25ms        128.6ms         22.2ms
+2048          204ms             1s        180.8ms
 ```
 
 ## License
