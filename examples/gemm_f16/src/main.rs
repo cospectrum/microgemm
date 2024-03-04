@@ -1,5 +1,5 @@
 use half::f16;
-use microgemm::{Kernel as _, MatRef, MatMut, kernels::Generic2x2Kernel, PackSizes};
+use microgemm::{Kernel as _, MatRef, MatMut, kernels::GenericKernel2x2, PackSizes};
 
 fn main() {
     let to_f16 = |v: &[f32]| -> Vec<f16> {
@@ -17,7 +17,7 @@ fn main() {
     let mut c = [f16::ZERO; 2 * 2];
     let mut c = MatMut::row_major(2, 2, c.as_mut());
 
-    let kernel = Generic2x2Kernel::<f16>::new();
+    let kernel = GenericKernel2x2::<f16>::new();
     let pack_sizes = PackSizes {
         mc: 2,
         kc: 3,

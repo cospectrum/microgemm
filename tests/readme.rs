@@ -1,8 +1,8 @@
-use microgemm::{kernels::Generic8x8Kernel, Kernel as _, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::GenericKernel8x8, Kernel as _, MatMut, MatRef, PackSizes};
 
 #[test]
 fn test_main() {
-    let kernel = Generic8x8Kernel::<f32>::new();
+    let kernel = GenericKernel8x8::<f32>::new();
     assert_eq!(kernel.mr(), 8);
     assert_eq!(kernel.nr(), 8);
 

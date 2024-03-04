@@ -76,11 +76,11 @@ macro_rules! impl_generic_square_kernel {
     };
 }
 
-impl_generic_square_kernel!(Generic2x2Kernel, 2, U2);
-impl_generic_square_kernel!(Generic4x4Kernel, 4, U4);
-impl_generic_square_kernel!(Generic8x8Kernel, 8, U8);
-impl_generic_square_kernel!(Generic16x16Kernel, 16, U16);
-impl_generic_square_kernel!(Generic32x32Kernel, 32, U32);
+impl_generic_square_kernel!(GenericKernel2x2, 2, U2);
+impl_generic_square_kernel!(GenericKernel4x4, 4, U4);
+impl_generic_square_kernel!(GenericKernel8x8, 8, U8);
+impl_generic_square_kernel!(GenericKernel16x16, 16, U16);
+impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 
 #[cfg(test)]
 mod tests {
@@ -90,20 +90,20 @@ mod tests {
 
     #[test]
     fn test_generic_kernels_i32() {
-        test_kernel_i32(Generic2x2Kernel::new());
-        test_kernel_i32(Generic4x4Kernel::new());
-        test_kernel_i32(Generic8x8Kernel::new());
-        test_kernel_i32(Generic16x16Kernel::new());
-        test_kernel_i32(Generic32x32Kernel::new());
+        test_kernel_i32(GenericKernel2x2::new());
+        test_kernel_i32(GenericKernel4x4::new());
+        test_kernel_i32(GenericKernel8x8::new());
+        test_kernel_i32(GenericKernel16x16::new());
+        test_kernel_i32(GenericKernel32x32::new());
     }
 
     #[test]
     fn test_generic_kernels_f32() {
-        test_kernel_f32(Generic2x2Kernel::new());
-        test_kernel_f32(Generic4x4Kernel::new());
-        test_kernel_f32(Generic8x8Kernel::new());
-        test_kernel_f32(Generic16x16Kernel::new());
-        test_kernel_i32(Generic32x32Kernel::new());
+        test_kernel_f32(GenericKernel2x2::new());
+        test_kernel_f32(GenericKernel4x4::new());
+        test_kernel_f32(GenericKernel8x8::new());
+        test_kernel_f32(GenericKernel16x16::new());
+        test_kernel_i32(GenericKernel32x32::new());
     }
 
     fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {

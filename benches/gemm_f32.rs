@@ -1,7 +1,7 @@
 use criterion::measurement::WallTime;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkGroup, Criterion};
 
-use microgemm::kernels::Generic8x8Kernel;
+use microgemm::kernels::GenericKernel8x8;
 use microgemm::{Kernel, MatMut, MatRef, PackSizes};
 
 fn bench_gemm(criterion: &mut Criterion) {
@@ -23,12 +23,12 @@ fn bench_gemm(criterion: &mut Criterion) {
 
     #[cfg(all(target_arch = "aarch64", target_feature = "neon"))]
     {
-        use microgemm::kernels::NeonKernel;
-        let kernel = unsafe { &NeonKernel::<f32>::new() };
+        use microgemm::kernels::NeonKernel4x4;
+        let kernel = unsafe { &NeonKernel4x4::<f32>::new() };
         bench_kernel_with(group, "neon-kernel", kernel, mkn, pack_sizes);
     }
 
-    let kernel = &Generic8x8Kernel::<f32>::new();
+    let kernel = &GenericKernel8x8::<f32>::new();
     bench_kernel_with(group, "generic-kernel", kernel, mkn, pack_sizes);
 }
 

@@ -5,10 +5,10 @@ mod neon;
 use crate::{Kernel, MatMut, MatRef};
 
 pub use generic::{
-    Generic16x16Kernel, Generic2x2Kernel, Generic32x32Kernel, Generic4x4Kernel, Generic8x8Kernel,
+    GenericKernel16x16, GenericKernel2x2, GenericKernel32x32, GenericKernel4x4, GenericKernel8x8,
 };
 #[cfg(any(target_arch = "aarch64", doc))]
-pub use neon::NeonKernel;
+pub use neon::NeonKernel4x4;
 
 fn dbg_check_microkernel_inputs<T, K>(_: &K, lhs: &MatRef<T>, rhs: &MatRef<T>, dst: &mut MatMut<T>)
 where

@@ -3,17 +3,17 @@
 
 use core::panic::PanicInfo;
 
-use microgemm::{kernels::Generic8x8Kernel, Kernel as _, PackSizes, MatRef, MatMut};
+use microgemm::{kernels::GenericKernel8x8, Kernel as _, PackSizes, MatRef, MatMut};
 
-const KERNEL: Generic8x8Kernel<f32> = Generic8x8Kernel::<f32>::new();
+const KERNEL: GenericKernel8x8<f32> = GenericKernel8x8::<f32>::new();
 const M: usize = 2;
 const K: usize = 3;
 const N: usize = 4;
 
 const PACK_SIZES: &PackSizes = &PackSizes {
-    mc: Generic8x8Kernel::<f32>::MR,
+    mc: GenericKernel8x8::<f32>::MR,
     kc: K,
-    nc: Generic8x8Kernel::<f32>::NR,
+    nc: GenericKernel8x8::<f32>::NR,
 };
 
 #[no_mangle]

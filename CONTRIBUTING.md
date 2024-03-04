@@ -11,11 +11,9 @@ Explore possible optimizations.
 
 ### Requirements
 
-1. rustc 1.65+
+1. rustc 1.65+, cargo
 2. cargo-make
 3. CMake
-4. node
-5. firefox
 
 ### Run
 

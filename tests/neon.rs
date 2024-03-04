@@ -1,11 +1,11 @@
 #![cfg(target_arch = "aarch64")]
 
-use microgemm::{kernels::NeonKernel, Kernel, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::NeonKernel4x4, Kernel, MatMut, MatRef, PackSizes};
 
 #[test]
 fn test_neon() {
     let kernel = if cfg!(target_feature = "neon") {
-        unsafe { NeonKernel::<f32>::new() }
+        unsafe { NeonKernel4x4::<f32>::new() }
     } else {
         println!("neon feature is not supported");
         return;

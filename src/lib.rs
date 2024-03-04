@@ -14,7 +14,12 @@ Supports `no_std` and `no_alloc` environments.
 
 The implementation is based on the [BLIS](https://github.com/flame/blis) microkernel approach.
 
-## Getting Started
+## Install
+```sh
+cargo add microgemm
+```
+
+## Usage
 
 The [`Kernel`] trait is the main abstraction of `microgemm`.
 You can implement it yourself or use [`kernels`] that are already provided out of the box.
@@ -25,9 +30,9 @@ You can implement it yourself or use [`kernels`] that are already provided out o
 ### gemm
 
 ```rust
-use microgemm::{kernels::Generic8x8Kernel, Kernel as _, MatMut, MatRef, PackSizes};
+use microgemm::{kernels::GenericKernel8x8, Kernel as _, MatMut, MatRef, PackSizes};
 
-let kernel = Generic8x8Kernel::<f32>::new();
+let kernel = GenericKernel8x8::<f32>::new();
 assert_eq!(kernel.mr(), 8);
 assert_eq!(kernel.nr(), 8);
 
@@ -58,10 +63,10 @@ println!("{:?}", c.as_slice());
 
 | Name | Scalar Types | Target |
 | ---- | ------------ | ------ |
-| GenericNxNKernel <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
-| [`NeonKernel`] | f32 | aarch64 and target feature neon |
+| GenericKernelNxN <br> (N: 2, 4, 8, 16, 32) | T: Copy + Zero + One + Mul + Add | Any |
+| [`NeonKernel4x4`] | f32 | aarch64 and target feature neon |
 
-[`NeonKernel`]: crate::kernels::NeonKernel
+[`NeonKernel4x4`]: crate::kernels::NeonKernel4x4
 
 ### Custom Kernel Implementation
 
@@ -112,7 +117,7 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 ####  aarch64 (M1)
 
 ```notrust
-   n     NeonKernel           faer matrixmultiply
+   n     NeonKernel4x4           faer matrixmultiply
  128        251.5µs        741.5µs        143.4µs
  256        828.3µs          3.7ms        993.6µs
  512          3.3ms         16.4ms          3.6ms
