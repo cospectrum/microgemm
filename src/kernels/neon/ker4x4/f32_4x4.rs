@@ -154,6 +154,8 @@ mod tests {
 
     #[test]
     fn test_neon_f32() {
+        const DIM: usize = 4;
+
         let generic_kernel = &GenericKernel4x4::<f32>::new();
         let neon_kernel = &neon_kernel::<f32>();
 
@@ -164,8 +166,8 @@ mod tests {
         };
 
         for _ in 0..60 {
-            let mc = rng.gen_range(1..20) * 4;
-            let nc = rng.gen_range(1..20) * 4;
+            let mc = rng.gen_range(1..20) * DIM;
+            let nc = rng.gen_range(1..20) * DIM;
             let scalar = || rng.gen_range(-1.0..1.0);
 
             cmp_kernels_with_random_data(generic_kernel, neon_kernel, scalar, cmp, mc, nc);
