@@ -17,7 +17,12 @@ Supports `no_std` and `no_alloc` environments.
 
 The implementation is based on the [BLIS](https://github.com/flame/blis) microkernel approach.
 
-## Getting Started
+## Install
+```sh
+cargo add microgemm
+```
+
+## Usage
 
 The `Kernel` trait is the main abstraction of `microgemm`.
 You can implement it yourself or use kernels that are already provided out of the box.
