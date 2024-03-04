@@ -10,8 +10,6 @@
 [crates.io]: https://crates.io/crates/microgemm
 [docs.rs]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
 
-# The main branch is pre-release of v0.2
-
 General matrix multiplication with custom configuration in Rust. <br>
 Supports `no_std` and `no_alloc` environments.
 
