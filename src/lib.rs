@@ -150,7 +150,7 @@ pub(crate) mod packing;
 pub(crate) mod utils;
 
 pub mod kernels;
-pub mod mat;
+mod mat;
 
 pub use generic_array::typenum;
 pub use num_traits::{One, Zero};
