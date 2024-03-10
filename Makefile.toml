@@ -58,6 +58,11 @@ dependencies = [
     "check-no-std",
 ]
 
+[tasks.minlock]
+toolchain = "nightly"
+command = "cargo"
+args = ["update", "-Zminimal-versions"]
+
 ############################################################
 
 [tasks.example-f16]
