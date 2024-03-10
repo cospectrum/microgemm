@@ -128,7 +128,7 @@ env = { "RUSTFLAGS" = "-Z sanitizer=address" }
 command = "cargo"
 args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 
-[tasks.sanitize-neon]
+[tasks.sans]
 env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--sanitize-neon"]
 
