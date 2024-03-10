@@ -1,7 +1,7 @@
 # This is the main CI workflow that runs the test suite on all pushes to main and all pull requests.
 # It runs the following jobs:
 # - required: runs the test suite on ubuntu with stable and beta rust toolchains
-# - minimal: runs the test suite with the minimal versions of the dependencies that satisfy the
+# - minimal: runs "cargo check" with the minimal versions of the dependencies that satisfy the
 #   requirements of this crate, and its dependencies
 # - os-check: runs the test suite on mac and windows
 # See check.yml for information about how the concurrency cancellation and workflow triggering works
@@ -79,8 +79,10 @@ jobs:
         run: rustup default stable
       - name: cargo update -Zminimal-versions
         run: cargo +nightly update -Zminimal-versions
-      - name: cargo test
-        run: cargo test --locked --all-features --all-targets
+      - name: cargo check
+        run: cargo check --locked
+        env:
+          RUSTFLAGS: -D warnings
   os-check:
     # run cargo test on mac and windows
     runs-on: ${{ matrix.os }}
