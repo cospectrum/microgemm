@@ -58,6 +58,11 @@ dependencies = [
     "check-no-std",
 ]
 
+[tasks.minlock]
+toolchain = "nightly"
+command = "cargo"
+args = ["update", "-Zminimal-versions"]
+
 ############################################################
 
 [tasks.example-f16]
@@ -79,7 +84,7 @@ dependencies = ["example-f16"]
 command = "cargo"
 args = ["test"]
 
-[tasks.fmt]
+[tasks.fmt-check]
 command = "cargo"
 args = ["fmt", "--check"]
 
@@ -102,6 +107,10 @@ toolchain = "nightly"
 env = { "RUSTDOCFLAGS" = "-D warnings --cfg docsrs" }
 command = "cargo"
 args = ["doc", "--no-deps", "--all-features"]
+
+[tasks.doctest]
+command = "cargo"
+args = ["test", "--all-features", "--doc"]
 
 [tasks.semver]
 install_crate = "cargo-semver-checks"
@@ -128,7 +137,7 @@ env = { "RUSTFLAGS" = "-Z sanitizer=address" }
 command = "cargo"
 args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 
-[tasks.sanitize-neon]
+[tasks.sans]
 env = { "RUSTFLAGS" = {unset = true} }
 dependencies = ["--sanitize-neon"]
 
@@ -138,7 +147,8 @@ dependencies = [
     "msrv",
     "semver",
     "doc",
-    "fmt",
+    "doctest",
+    "fmt-check",
     "check",
     "clippy",
     "build",
