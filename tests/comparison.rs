@@ -65,6 +65,7 @@ fn display_duration(t: Duration) -> String {
 }
 
 #[allow(dead_code)]
+#[allow(clippy::incompatible_msrv)]
 fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Duration {
     use core::hint::black_box;
 
@@ -95,6 +96,7 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     result
 }
 
+#[allow(dead_code)]
 struct FaerKernel;
 
 impl Kernel for FaerKernel {
@@ -140,7 +142,7 @@ impl Kernel for FaerKernel {
                 b.col_stride() as isize,
             )
         };
-        let mut acc = unsafe {
+        let acc = unsafe {
             faer_core::mat::from_raw_parts_mut::<f32>(
                 c.as_mut_slice().as_mut_ptr(),
                 c.nrows(),
@@ -150,9 +152,9 @@ impl Kernel for FaerKernel {
             )
         };
         faer_core::mul::matmul(
-            acc.as_mut(),
-            lhs.as_ref(),
-            rhs.as_ref(),
+            acc,
+            lhs,
+            rhs,
             Some(alpha),
             beta,
             faer_core::Parallelism::None,
@@ -160,6 +162,7 @@ impl Kernel for FaerKernel {
     }
 }
 
+#[allow(dead_code)]
 struct MatrixMultiplyKernel;
 
 impl Kernel for MatrixMultiplyKernel {
