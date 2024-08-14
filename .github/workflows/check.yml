@@ -13,7 +13,7 @@ permissions:
 # built once.
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 # If new code is pushed to a PR branch, then cancel in progress workflows for that PR. Ensures that
 # we don't waste CI time, and returns results quicker https://github.com/jonhoo/rust-ci-conf/pull/5
@@ -99,7 +99,7 @@ jobs:
     # https://docs.github.com/en/actions/learn-github-actions/contexts#context-availability
     strategy:
       matrix:
-        msrv: ["1.65.0"] # 2021 edition requires 1.56
+        msrv: ["1.65.0"] # Don't forget to update the `rust-version` in Cargo.toml as well
     name: ubuntu / ${{ matrix.msrv }}
     steps:
       - uses: actions/checkout@v4

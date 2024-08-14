@@ -5,7 +5,7 @@ permissions:
   contents: read
 on:
   push:
-    branches: [main]
+    branches: [main, master]
   pull_request:
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -17,7 +17,7 @@ jobs:
     name: ${{ matrix.target }}
     strategy:
       matrix:
-        target: [thumbv7m-none-eabi, aarch64-unknown-none]
+        target: [thumbv7m-none-eabi, aarch64-unknown-none, x86_64-unknown-none]
     steps:
       - uses: actions/checkout@v4
         with:

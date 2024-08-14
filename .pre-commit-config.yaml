@@ -1,9 +1,0 @@
-repos:
-  - repo: local
-    hooks:
-      - id: pre-commit
-        name: pre-commit
-        entry: cargo make pre-commit
-        language: system
-        pass_filenames: false
-        always_run: true

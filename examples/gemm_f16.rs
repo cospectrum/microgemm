@@ -1,10 +1,8 @@
-use half::f16;
-use microgemm::{Kernel as _, MatRef, MatMut, kernels::GenericKernel2x2, PackSizes};
+use half::f16; // with `num-traits` feature
+use microgemm::{kernels::GenericKernel2x2, Kernel as _, MatMut, MatRef, PackSizes};
 
 fn main() {
-    let to_f16 = |v: &[f32]| -> Vec<f16> {
-        v.iter().copied().map(f16::from_f32).collect()
-    };
+    let to_f16 = |v: &[f32]| -> Vec<f16> { v.iter().copied().map(f16::from_f32).collect() };
 
     let a = [1., 2., 3., 4., 5., 6.];
     let a = to_f16(&a);
@@ -27,14 +25,6 @@ fn main() {
 
     let (alpha, beta) = (f16::ONE, f16::ZERO);
 
-    kernel.gemm(
-        alpha,
-        &a,
-        &b,
-        beta,
-        &mut c,
-        &pack_sizes,
-        &mut packing_buf,
-    );
+    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }
