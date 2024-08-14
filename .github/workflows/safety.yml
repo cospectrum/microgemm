@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 name: safety
 jobs:
-  sanitizers:
+  sanitize_x86_64:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
