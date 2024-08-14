@@ -6,14 +6,14 @@
 RUSTFLAGS="-C target-cpu=native" cargo bench
 ```
 
-## Cache
+## Cache Utils
 
-Cache info
+Get cache info
 ```sh
 sysctl -a | grep 'cachesize'
 ```
 
-Helper script for block sizes
+Run helper script for block sizes
 ```sh
 python3 cache.py
 ```

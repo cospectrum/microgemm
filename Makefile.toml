@@ -1,127 +1,3 @@
-[tasks.install-x86_64-unknown-none]
-command = "rustup"
-args = ["target", "add", "x86_64-unknown-none"]
-
-[tasks.install-aarch64-unknown-none]
-command = "rustup"
-args = ["target", "add", "aarch64-unknown-none"]
-
-[tasks.install-wasm32-unknown-unknown]
-command = "rustup"
-args = ["target", "add", "wasm32-unknown-unknown"]
-
-[tasks.install-thumbv7em-none-eabihf]
-command = "rustup"
-args = ["target", "add", "thumbv7em-none-eabihf"]
-
-############################################################
-
-[tasks.build-wasm32]
-command = "cargo"
-args = ["build", "--target", "wasm32-unknown-unknown"]
-dependencies = ["install-wasm32-unknown-unknown"]
-
-[tasks.build-x86_64-unknown-none]
-command = "cargo"
-args = ["build", "--target", "x86_64-unknown-none"]
-dependencies = ["install-x86_64-unknown-none"]
-
-[tasks.build-thumbv7em-none-eabihf]
-command = "cargo"
-args = ["build", "--target", "thumbv7em-none-eabihf"]
-dependencies = ["install-thumbv7em-none-eabihf"]
-
-[tasks.check-no-std]
-command = "cargo"
-args = [
-    "build",
-    "--manifest-path",
-    "check_no_std/Cargo.toml",
-    "--target",
-    "thumbv7em-none-eabihf",
-]
-dependencies = ["install-thumbv7em-none-eabihf"]
-
-[tasks.build-aarch64-unknown-none]
-command = "cargo"
-args = ["build", "--target", "aarch64-unknown-none"]
-dependencies = ["install-aarch64-unknown-none"]
-
-[tasks.build]
-command = "cargo"
-args = ["build"]
-dependencies = [
-    "build-aarch64-unknown-none",
-    "build-wasm32",
-    "build-thumbv7em-none-eabihf",
-    "build-x86_64-unknown-none",
-    "check-no-std",
-]
-
-[tasks.minlock]
-toolchain = "nightly"
-command = "cargo"
-args = ["update", "-Zminimal-versions"]
-
-############################################################
-
-[tasks.example-f16]
-command = "cargo"
-args = [
-    "run",
-    "--manifest-path",
-    "examples/gemm_f16/Cargo.toml",
-]
-
-[tasks.examples]
-command = "cargo"
-args = ["build", "--examples"]
-dependencies = ["example-f16"]
-
-############################################################
-
-[tasks.tests]
-command = "cargo"
-args = ["test"]
-
-[tasks.fmt-check]
-command = "cargo"
-args = ["fmt", "--check"]
-
-[tasks.check-wasm]
-command = "cargo"
-args = ["check", "--target", "wasm32-unknown-unknown"]
-dependencies = ["install-wasm32-unknown-unknown"]
-
-[tasks.check]
-command = "cargo"
-args = ["check"]
-dependencies = ["check-wasm"]
-
-[tasks.clippy]
-command = "cargo"
-args = ["clippy", "--all-targets", "--all-features", "--", "-Dwarnings"]
-
-[tasks.doc]
-toolchain = "nightly"
-env = { "RUSTDOCFLAGS" = "-D warnings --cfg docsrs" }
-command = "cargo"
-args = ["doc", "--no-deps", "--all-features"]
-
-[tasks.doctest]
-command = "cargo"
-args = ["test", "--all-features", "--doc"]
-
-[tasks.semver]
-install_crate = "cargo-semver-checks"
-command = "cargo"
-args = ["semver-checks"]
-
-[tasks.msrv]
-install_crate = "cargo-msrv"
-command = "cargo"
-args = ["msrv", "verify"]
-
 [tasks.comparison]
 command = "cargo"
 args = ["test", "--release", "--test", "comparison", "--", "--ignored", "--nocapture"]
@@ -131,7 +7,7 @@ command = "cargo"
 args = ["bench"]
 dependencies = ["comparison"]
 
-[tasks.--sanitize-neon]
+[tasks.sanitize-neon]
 toolchain = "nightly"
 env = { "RUSTFLAGS" = "-Z sanitizer=address" }
 command = "cargo"
@@ -139,26 +15,4 @@ args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 
 [tasks.sans]
 env = { "RUSTFLAGS" = {unset = true} }
-dependencies = ["--sanitize-neon"]
-
-[tasks.pre-commit]
-dependencies = [
-    "tests",
-    "msrv",
-    "semver",
-    "doc",
-    "doctest",
-    "fmt-check",
-    "check",
-    "clippy",
-    "build",
-    "examples",
-]
-
-[tasks.all]
-dependencies = ["bench", "pre-commit"]
-
-[tasks.publish]
-command = "cargo"
-args = ["publish"]
-dependencies = ["all"]
+dependencies = ["sanitize-neon"]
