@@ -34,7 +34,7 @@ jobs:
         with:
           components: rustfmt
       - name: cargo fmt --check
-        run cargo fmt --check
+        run: cargo fmt --check
   clippy:
     runs-on: ubuntu-latest
     name: ${{ matrix.toolchain }} / clippy
