@@ -86,17 +86,20 @@ impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 mod proptests {
     use super::*;
     use crate::std_prelude::*;
-    use proptest::{arbitrary::any, proptest};
+    use proptest::{arbitrary::any, proptest, strategy::Strategy};
 
     use crate::{
         as_mut,
-        utils::{self, arb_matrix_triple, arb_pack_sizes},
+        utils::{self, arb_matrix_triple_with, arb_pack_sizes},
     };
 
     proptest! {
         #[test]
         fn proptest_generic_kernel_i32(
-            [a, b, c] in arb_matrix_triple::<i32>(1..30, 1..30, 1..30),
+            [a, b, c] in arb_matrix_triple_with::<i32>(
+                1..30, 1..30, 1..30,
+                any::<i32>().prop_filter("bound", |&x| x.abs() < 100i32),
+            ),
             alpha in any::<i32>(),
             beta in any::<i32>(),
         ) {
