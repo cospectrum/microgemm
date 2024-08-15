@@ -60,8 +60,8 @@ macro_rules! impl_generic_square_kernel {
             fn microkernel(
                 &self,
                 alpha: Self::Scalar,
-                lhs: &crate::MatRef<Self::Scalar>,
-                rhs: &crate::MatRef<Self::Scalar>,
+                lhs: crate::MatRef<Self::Scalar>,
+                rhs: crate::MatRef<Self::Scalar>,
                 beta: Self::Scalar,
                 dst: &mut crate::MatMut<Self::Scalar>,
             ) {

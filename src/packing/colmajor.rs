@@ -28,7 +28,7 @@ impl<T> ColMajor<&mut [T]>
 where
     T: Copy + Zero,
 {
-    pub fn init_from(&mut self, mat: &MatRef<T>, rows: Range<usize>, cols: Range<usize>) {
+    pub fn init_from(&mut self, mat: MatRef<T>, rows: Range<usize>, cols: Range<usize>) {
         let buf = self.as_mut();
         assert_eq!(buf.len(), rows.len() * cols.len());
         let mut it = buf.iter_mut();
@@ -63,7 +63,7 @@ mod tests {
 
         let block = |rows: Range<usize>, cols: Range<usize>| {
             let mut buf = vec![-1; rows.len() * cols.len()];
-            ColMajor(buf.as_mut_slice()).init_from(&b, rows, cols);
+            ColMajor(buf.as_mut_slice()).init_from(b, rows, cols);
             buf
         };
 

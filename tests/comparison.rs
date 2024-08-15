@@ -73,11 +73,11 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     let b = black_box(a.clone());
     let mut c = black_box(a.clone());
 
-    let a = &MatRef::col_major(n, n, a.as_ref());
-    let b = &MatRef::row_major(n, n, b.as_ref());
+    let a = MatRef::col_major(n, n, a.as_ref());
+    let b = MatRef::row_major(n, n, b.as_ref());
     let c = &mut MatMut::row_major(n, n, c.as_mut());
 
-    let pack_sizes = &PackSizes {
+    let pack_sizes = PackSizes {
         mc: n,
         kc: n,
         nc: n,
@@ -107,8 +107,8 @@ impl Kernel for FaerKernel {
     fn microkernel(
         &self,
         _: Self::Scalar,
-        _: &MatRef<Self::Scalar>,
-        _: &MatRef<Self::Scalar>,
+        _: MatRef<Self::Scalar>,
+        _: MatRef<Self::Scalar>,
         _: Self::Scalar,
         _: &mut MatMut<Self::Scalar>,
     ) {
@@ -117,11 +117,11 @@ impl Kernel for FaerKernel {
     fn gemm(
         &self,
         alpha: Self::Scalar,
-        a: &MatRef<Self::Scalar>,
-        b: &MatRef<Self::Scalar>,
+        a: MatRef<Self::Scalar>,
+        b: MatRef<Self::Scalar>,
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
-        _: impl AsRef<PackSizes>,
+        _: PackSizes,
         _: &mut [Self::Scalar],
     ) {
         let lhs = unsafe {
@@ -173,8 +173,8 @@ impl Kernel for MatrixMultiplyKernel {
     fn microkernel(
         &self,
         _: Self::Scalar,
-        _: &MatRef<Self::Scalar>,
-        _: &MatRef<Self::Scalar>,
+        _: MatRef<Self::Scalar>,
+        _: MatRef<Self::Scalar>,
         _: Self::Scalar,
         _: &mut MatMut<Self::Scalar>,
     ) {
@@ -183,11 +183,11 @@ impl Kernel for MatrixMultiplyKernel {
     fn gemm(
         &self,
         alpha: Self::Scalar,
-        a: &MatRef<Self::Scalar>,
-        b: &MatRef<Self::Scalar>,
+        a: MatRef<Self::Scalar>,
+        b: MatRef<Self::Scalar>,
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
-        _: impl AsRef<PackSizes>,
+        _: PackSizes,
         _: &mut [Self::Scalar],
     ) {
         let [m, k] = [a.nrows(), a.ncols()];

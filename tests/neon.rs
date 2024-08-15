@@ -42,8 +42,8 @@ fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
     let mut packing_buf = vec![0f32; pack_sizes.buf_len()];
     kernel.gemm(
         1f32,
-        a.as_ref(),
-        b.as_ref(),
+        a,
+        b,
         0f32,
         c.as_mut(),
         pack_sizes,

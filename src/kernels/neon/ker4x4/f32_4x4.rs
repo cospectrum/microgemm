@@ -12,8 +12,8 @@ impl Kernel for NeonKernel4x4<f32> {
     fn microkernel(
         &self,
         alpha: f32,
-        lhs: &MatRef<f32>,
-        rhs: &MatRef<f32>,
+        lhs: MatRef<f32>,
+        rhs: MatRef<f32>,
         beta: f32,
         dst: &mut MatMut<f32>,
     ) {

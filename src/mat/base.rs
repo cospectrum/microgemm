@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 use num_traits::Zero;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MatBase<V, T> {
     pub(super) nrows: usize,
     pub(super) ncols: usize,
@@ -41,6 +41,8 @@ impl<V, T> MatBase<V, T> {
         self.col_stride
     }
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
+        debug_assert!(row < self.nrows());
+        debug_assert!(col < self.ncols());
         row * self.row_stride + col * self.col_stride
     }
 }

@@ -92,8 +92,8 @@ pub fn cmp_kernels_with_random_data<T, K1, K2>(
     let alpha = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
     let beta = toss_a_coin(scalar(), toss_a_coin(T::zero(), T::one()));
 
-    kernel1.gemm(alpha, &a, &b, beta, &mut c1, &pack_sizes, &mut buf1);
-    kernel2.gemm(alpha, &a, &b, beta, &mut c2, &pack_sizes, &mut buf2);
+    kernel1.gemm(alpha, a, b, beta, &mut c1, pack_sizes, &mut buf1);
+    kernel2.gemm(alpha, a, b, beta, &mut c2, pack_sizes, &mut buf2);
 
     cmp(c1.as_slice(), c2.as_slice())
 }
@@ -119,17 +119,17 @@ where
     type Mr = crate::typenum::U0;
     type Nr = crate::typenum::U0;
 
-    fn microkernel(&self, _: T, _: &MatRef<T>, _: &MatRef<T>, _: T, _: &mut MatMut<T>) {
+    fn microkernel(&self, _: T, _: MatRef<T>, _: MatRef<T>, _: T, _: &mut MatMut<T>) {
         unreachable!()
     }
     fn gemm(
         &self,
         alpha: T,
-        a: &MatRef<T>,
-        b: &MatRef<T>,
+        a: MatRef<T>,
+        b: MatRef<T>,
         beta: T,
         c: &mut MatMut<T>,
-        _: impl AsRef<PackSizes>,
+        _: PackSizes,
         _: &mut [T],
     ) {
         naive_gemm(alpha, a, b, beta, c);

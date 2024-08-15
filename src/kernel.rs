@@ -20,8 +20,8 @@ where
     fn microkernel(
         &self,
         alpha: Self::Scalar,
-        lhs: &MatRef<Self::Scalar>,
-        rhs: &MatRef<Self::Scalar>,
+        lhs: MatRef<Self::Scalar>,
+        rhs: MatRef<Self::Scalar>,
         beta: Self::Scalar,
         dst: &mut MatMut<Self::Scalar>,
     );
@@ -31,14 +31,14 @@ where
     fn gemm(
         &self,
         alpha: Self::Scalar,
-        a: &MatRef<Self::Scalar>,
-        b: &MatRef<Self::Scalar>,
+        a: MatRef<Self::Scalar>,
+        b: MatRef<Self::Scalar>,
         beta: Self::Scalar,
         c: &mut MatMut<Self::Scalar>,
-        pack_sizes: impl AsRef<PackSizes>,
+        pack_sizes: PackSizes,
         packing_buf: &mut [Self::Scalar],
     ) {
-        gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes.as_ref(), packing_buf);
+        gemm_with_kernel(self, alpha, a, b, beta, c, pack_sizes, packing_buf);
     }
     fn mr(&self) -> usize {
         Self::MR

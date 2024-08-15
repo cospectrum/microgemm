@@ -6,7 +6,7 @@ const N: usize = 22;
 
 const KERNEL: GenericKernel4x4<f32> = GenericKernel4x4::<f32>::new();
 
-const PACK_SIZES: &PackSizes = &PackSizes {
+const PACK_SIZES: PackSizes = PackSizes {
     mc: 2 * GenericKernel4x4::<f32>::MR,
     kc: 16,
     nc: 3 * GenericKernel4x4::<f32>::NR,
@@ -24,6 +24,6 @@ fn main() {
     let b = MatRef::row_major(K, N, &b);
     let mut c = MatMut::row_major(M, N, &mut c);
 
-    KERNEL.gemm(alpha, &a, &b, beta, &mut c, PACK_SIZES, &mut packing_buf);
+    KERNEL.gemm(alpha, a, b, beta, &mut c, PACK_SIZES, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }

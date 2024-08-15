@@ -19,7 +19,7 @@ pub(crate) fn registers_to_c<T>(
 // read submatrix from c to colmajor "registers"
 pub(crate) fn registers_from_c<T>(
     registers: &mut [T],
-    c: &MatRef<T>,
+    c: MatRef<T>,
     c_rows: Range<usize>,
     c_cols: Range<usize>,
 ) where

@@ -7,7 +7,7 @@ use num_traits::{One, Zero};
 pub(crate) fn pack_a<T>(
     mr: usize,
     apack: &mut [T],
-    a: &MatRef<T>,
+    a: MatRef<T>,
     rows: Range<usize>,
     cols: Range<usize>,
 ) where

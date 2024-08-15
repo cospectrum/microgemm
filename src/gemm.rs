@@ -10,11 +10,11 @@ type Product<L, R> = <L as Multiply<R>>::Output;
 pub(crate) fn gemm_with_kernel<T, K>(
     kernel: &K,
     alpha: T,
-    a: &MatRef<T>,
-    b: &MatRef<T>,
+    a: MatRef<T>,
+    b: MatRef<T>,
     beta: T,
     c: &mut MatMut<T>,
-    pack_sizes: &PackSizes,
+    pack_sizes: PackSizes,
     packing_buf: &mut [T],
 ) where
     T: Copy + Zero + One,
@@ -87,12 +87,12 @@ pub(crate) fn gemm_with_kernel<T, K>(
                         let dst_rows = ic + ir..ic + ir + mr;
                         crate::packing::registers_from_c(
                             dst_buf,
-                            &c.to_ref(),
+                            c.to_ref(),
                             dst_rows.clone(),
                             dst_cols.clone(),
                         );
                         let mut dst = MatMut::col_major(mr, nr, dst_buf);
-                        kernel.microkernel(alpha, &lhs, &rhs, beta, &mut dst);
+                        kernel.microkernel(alpha, lhs, rhs, beta, &mut dst);
                         crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
                 }
@@ -120,8 +120,8 @@ mod tests {
         fn microkernel(
             &self,
             alpha: i32,
-            lhs: &MatRef<i32>,
-            rhs: &MatRef<i32>,
+            lhs: MatRef<i32>,
+            rhs: MatRef<i32>,
             beta: i32,
             dst: &mut MatMut<i32>,
         ) {
@@ -169,7 +169,7 @@ mod tests {
         let pack_sizes = PackSizes { mc: 5 * TestKernel::MR,  kc: 2, nc: 2 * TestKernel::NR };
         let mut buf = vec![-9; pack_sizes.buf_len()];
 
-        gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
+        gemm_with_kernel(kernel, alpha, a, b, beta, &mut c, pack_sizes, &mut buf);
         assert_eq!(c.as_slice(), [260, 277, 638, 687]);
     }
 
@@ -212,8 +212,8 @@ mod tests {
         let alpha = 2;
         let beta = -3;
 
-        gemm_with_kernel(kernel, alpha, &a, &b, beta, &mut c, &pack_sizes, &mut buf);
-        naive_gemm(alpha, &a, &b, beta, &mut expect);
+        gemm_with_kernel(kernel, alpha, a, b, beta, &mut c, pack_sizes, &mut buf);
+        naive_gemm(alpha, a, b, beta, &mut expect);
         assert_eq!(c.as_slice(), expect.as_slice());
     }
 
@@ -266,8 +266,8 @@ mod tests {
         let pack_sizes = PackSizes {mc: kernel.mr(), kc: 2, nc: kernel.nr() };
         let mut buf = vec![-2; pack_sizes.buf_len()];
 
-        kernel.gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut(), &pack_sizes, &mut buf);
-        naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, expect.as_mut());
+        kernel.gemm(alpha, a, b, beta, c.as_mut(), pack_sizes, &mut buf);
+        naive_gemm(alpha, a, b, beta, expect.as_mut());
         assert_eq!(expect.as_slice(), c.as_slice());
     }
 }
