@@ -43,6 +43,13 @@ impl<V, T> MatBase<V, T> {
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
         debug_assert!(row < self.nrows());
         debug_assert!(col < self.ncols());
+        self.idx_unchecked(row, col)
+    }
+    pub(crate) fn in_bounds(&self, row: usize, col: usize) -> bool {
+        row < self.nrows() && col < self.ncols()
+    }
+    #[inline]
+    pub(crate) fn idx_unchecked(&self, row: usize, col: usize) -> usize {
         row * self.row_stride + col * self.col_stride
     }
 }
@@ -104,7 +111,7 @@ where
         self.as_slice()[self.idx(row, col)]
     }
     pub(crate) fn get_or(&self, row: usize, col: usize, default: T) -> T {
-        if row < self.nrows && col < self.ncols {
+        if self.in_bounds(row, col) {
             self.get(row, col)
         } else {
             default

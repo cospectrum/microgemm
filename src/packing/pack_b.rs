@@ -28,7 +28,9 @@ pub(crate) fn pack_b<T>(
 
     for i in 0..blocks - 1 {
         let cols = start + nr * i..start + nr * (i + 1);
+        debug_assert!(cols.start < b.ncols());
         for row in rows.clone() {
+            debug_assert!(row < b.nrows());
             let idx = b.idx(row, cols.start);
             let lane = b.as_slice()[idx..]
                 .iter()
@@ -48,6 +50,8 @@ pub(crate) fn pack_b<T>(
 
     for row in rows.clone() {
         let range = cols.start..min;
+        debug_assert!(row < b.nrows());
+        debug_assert!(range.start < b.ncols());
         let idx = b.idx(row, range.start);
         let lane = b
             .as_slice()
