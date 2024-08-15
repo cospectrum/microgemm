@@ -56,6 +56,7 @@ where
     .boxed()
 }
 
+#[allow(dead_code)]
 pub fn arb_matrix_triple<T>(
     m: impl Into<SizeRange>,
     k: impl Into<SizeRange>,
