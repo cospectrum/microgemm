@@ -4,6 +4,7 @@
 [![github]](https://github.com/cospectrum/microgemm)
 [![latest_version]][crates.io]
 [![docs.rs]](https://docs.rs/microgemm)
+[![dependency status](https://deps.rs/repo/github/cospectrum/microgemm/status.svg)](https://deps.rs/repo/github/cospectrum/microgemm)
 
 [github]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
 [latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
