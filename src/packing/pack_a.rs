@@ -22,9 +22,8 @@ pub(crate) fn pack_a<T>(
     assert!(cols.end <= a.ncols());
     assert!(rows.start < a.nrows());
 
-    let rows_offset = rows.start;
-
     let mut it = apack.iter_mut();
+    let rows_offset = rows.start;
 
     let rows_stop_at = a.nrows().min(rows.end);
     let number_of_valid_blocks = (rows_stop_at - rows.start) / mr;
@@ -33,6 +32,7 @@ pub(crate) fn pack_a<T>(
     for nblock in 0..number_of_valid_blocks {
         let block_rows = rows_offset + mr * nblock..rows_offset + mr * (nblock + 1);
         debug_assert!(block_rows.start < a.nrows());
+        debug_assert!(block_rows.end <= a.nrows());
         debug_assert_eq!(block_rows.len(), mr);
 
         for col in cols.clone() {
@@ -53,10 +53,11 @@ pub(crate) fn pack_a<T>(
     if remains > 0 {
         let nblock = number_of_valid_blocks;
         let block_rows = rows_offset + mr * nblock..rows_stop_at;
-        debug_assert!(block_rows.start < block_rows.end, "{:?}", block_rows);
-        debug_assert!(block_rows.start < a.nrows());
+        debug_assert!(block_rows.start < block_rows.end);
         debug_assert_eq!(block_rows.len(), remains);
-        let tail_len = mr - block_rows.len();
+
+        let tail_len = mr - remains;
+        debug_assert_eq!(block_rows.len() + tail_len, mr);
 
         for col in cols.clone() {
             debug_assert!(col < a.ncols());
@@ -67,7 +68,6 @@ pub(crate) fn pack_a<T>(
                 .copied()
                 .take(block_rows.len());
             let tail = core::iter::repeat(T::zero()).take(tail_len);
-            debug_assert_eq!(block_rows.len() + tail_len, mr);
             for val in lane.chain(tail) {
                 let dst = it.next().unwrap();
                 *dst = val;

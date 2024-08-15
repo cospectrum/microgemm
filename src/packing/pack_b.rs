@@ -1,8 +1,9 @@
 use crate::MatRef;
 use core::ops::Range;
-use num_traits::{One, Zero};
+use num_traits::Zero;
 
-// split the submatrix into row-major blocks
+// Pack the submatrix b[rows, cols] into (nc/nr) row-major blocks of size kc x nr.
+// Values outsize of `b` will be zeroed.
 #[inline]
 pub(crate) fn pack_b<T>(
     nr: usize,
@@ -11,7 +12,7 @@ pub(crate) fn pack_b<T>(
     rows: Range<usize>,
     cols: Range<usize>,
 ) where
-    T: One + Zero + Copy,
+    T: Zero + Copy,
 {
     let kc = rows.len();
     let nc = cols.len();
@@ -21,52 +22,60 @@ pub(crate) fn pack_b<T>(
     assert!(rows.end <= b.nrows());
     assert!(cols.start < b.ncols());
 
-    let start = cols.start;
-    let blocks = nc / nr;
-
     let mut it = bpack.iter_mut();
+    let cols_offset = cols.start;
 
-    for i in 0..blocks - 1 {
-        let cols = start + nr * i..start + nr * (i + 1);
-        debug_assert!(cols.start < b.ncols());
+    let cols_stop_at = cols.end.min(b.ncols());
+    let number_of_valid_blocks = (cols_stop_at - cols.start) / nr;
+    debug_assert!(number_of_valid_blocks <= nc / nr);
+
+    for nblock in 0..number_of_valid_blocks {
+        let block_cols = cols_offset + nr * nblock..cols_offset + nr * (nblock + 1);
+        debug_assert!(block_cols.start < b.ncols());
+        debug_assert!(block_cols.end <= b.ncols());
+        debug_assert_eq!(block_cols.len(), nr);
+
         for row in rows.clone() {
             debug_assert!(row < b.nrows());
-            let idx = b.idx(row, cols.start);
+            let idx = b.idx(row, block_cols.start);
             let lane = b.as_slice()[idx..]
                 .iter()
                 .step_by(b.col_stride())
-                .take(cols.len());
-            for &col in lane {
+                .take(block_cols.len());
+            for &val in lane {
                 let dst = it.next().unwrap();
-                *dst = col;
+                *dst = val;
             }
         }
     }
 
-    let zero = T::zero();
-    let i = blocks - 1;
-    let cols = start + nr * i..start + nr * (i + 1);
-    let min = b.ncols().min(cols.end);
+    let remains = (cols_stop_at - cols.start) % nr;
+    if remains > 0 {
+        let nblock = number_of_valid_blocks;
+        let block_cols = cols_offset + nr * nblock..cols_stop_at;
+        debug_assert!(block_cols.start < block_cols.end);
+        debug_assert_eq!(block_cols.len(), remains);
 
-    for row in rows.clone() {
-        let range = cols.start..min;
-        debug_assert!(row < b.nrows());
-        debug_assert!(range.start < b.ncols());
-        let idx = b.idx(row, range.start);
-        let lane = b
-            .as_slice()
-            .iter()
-            .skip(idx)
-            .step_by(b.col_stride())
-            .take(range.len());
-        for &col in lane {
-            let dst = it.next().unwrap();
-            *dst = col;
-        }
+        let tail_len = nr - remains;
+        debug_assert_eq!(block_cols.len() + tail_len, nr);
 
-        for _ in min..cols.end {
-            let dst = it.next().unwrap();
-            *dst = zero;
+        for row in rows.clone() {
+            debug_assert!(row < b.nrows());
+            let idx = b.idx(row, block_cols.start);
+            let lane = b.as_slice()[idx..]
+                .iter()
+                .step_by(b.col_stride())
+                .copied()
+                .take(block_cols.len());
+            let tail = core::iter::repeat(T::zero()).take(tail_len);
+            for val in lane.chain(tail) {
+                let dst = it.next().unwrap();
+                *dst = val;
+            }
         }
+    }
+
+    for dst in it {
+        *dst = T::zero();
     }
 }
