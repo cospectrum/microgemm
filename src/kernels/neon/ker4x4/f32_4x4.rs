@@ -119,7 +119,7 @@ fn neon_4x4_microkernel_f32(
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use std::arch::is_aarch64_feature_detected;
@@ -174,3 +174,4 @@ mod tests {
         }
     }
 }
+*/

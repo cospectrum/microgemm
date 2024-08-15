@@ -1,10 +1,10 @@
+mod arbitrary;
 mod naive;
-mod random;
 
 use approx::{AbsDiffEq, RelativeEq};
 
+pub use arbitrary::*;
 pub use naive::naive_gemm;
-pub use random::*;
 
 pub fn assert_approx_eq<T>(left: impl AsRef<[T]>, right: impl AsRef<[T]>, eps: T)
 where

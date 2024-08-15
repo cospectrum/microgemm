@@ -55,7 +55,7 @@ let b = MatRef::row_major(k, n, &b);
 let mut c = MatMut::row_major(m, n, &mut c);
 
 // c <- alpha a b + beta c
-kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
+kernel.gemm(alpha, a, b, beta, &mut c, pack_sizes, &mut packing_buf);
 println!("{:?}", c.as_slice());
 ```
 
@@ -86,8 +86,8 @@ impl Kernel for CustomKernel {
     fn microkernel(
         &self,
         alpha: f64,
-        lhs: &MatRef<f64>,
-        rhs: &MatRef<f64>,
+        lhs: MatRef<f64>,
+        rhs: MatRef<f64>,
         beta: f64,
         dst: &mut MatMut<f64>,
     ) {
@@ -141,6 +141,9 @@ extern crate std;
 mod std_prelude {
     pub use std::prelude::rust_2021::*;
 }
+
+#[cfg(test)]
+use allocator_api2::alloc::Global as GlobalAllocator;
 
 mod gemm;
 mod kernel;

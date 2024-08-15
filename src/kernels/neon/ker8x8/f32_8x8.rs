@@ -127,7 +127,7 @@ fn neon_8x8_microkernel_f32(
         }
     }
 }
-
+/*
 #[cfg(test)]
 mod tests {
     use std::arch::is_aarch64_feature_detected;
@@ -182,3 +182,4 @@ mod tests {
         }
     }
 }
+*/

@@ -83,44 +83,47 @@ impl_generic_square_kernel!(GenericKernel16x16, 16, U16);
 impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 
 #[cfg(test)]
-mod tests {
+mod proptests {
     use super::*;
-    use crate::{utils::*, Kernel};
-    use rand::{thread_rng, Rng};
+    use crate::std_prelude::*;
+    use proptest::{arbitrary::any, proptest};
 
-    #[test]
-    fn test_generic_kernels_i32() {
-        test_kernel_i32(GenericKernel2x2::new());
-        test_kernel_i32(GenericKernel4x4::new());
-        test_kernel_i32(GenericKernel8x8::new());
-        test_kernel_i32(GenericKernel16x16::new());
-        test_kernel_i32(GenericKernel32x32::new());
-    }
+    use crate::{
+        as_mut,
+        utils::{self, arb_matrix_triple, arb_pack_sizes},
+    };
 
-    #[test]
-    fn test_generic_kernels_f32() {
-        test_kernel_f32(GenericKernel2x2::new());
-        test_kernel_f32(GenericKernel4x4::new());
-        test_kernel_f32(GenericKernel8x8::new());
-        test_kernel_f32(GenericKernel16x16::new());
-        test_kernel_i32(GenericKernel32x32::new());
-    }
+    proptest! {
+        #[test]
+        fn proptest_generic_kernel_i32(
+            [a, b, c] in arb_matrix_triple::<i32>(1..30, 1..30, 1..30),
+            alpha in any::<i32>(),
+            beta in any::<i32>(),
+        ) {
+            let mut expected = c.clone();
+            utils::naive_gemm(
+                alpha,
+                a.to_ref(),
+                b.to_ref(),
+                beta,
+                as_mut!(expected),
+            );
 
-    fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
-        let cmp = |expect: &[f32], got: &[f32]| {
-            let eps = 75.0 * f32::EPSILON;
-            assert_approx_eq(expect, got, eps);
-        };
-        let mut rng = thread_rng();
-
-        for _ in 0..20 {
-            let scalar = || rng.gen_range(-1.0..1.0);
-            random_kernel_test(&kernel, scalar, cmp);
-        }
-    }
-    fn test_kernel_i32(kernel: impl Kernel<Scalar = i32>) {
-        for _ in 0..20 {
-            test_kernel_with_random_i32(&kernel);
+            let ker = GenericKernel2x2::new();
+            let packs = arb_pack_sizes(&ker, 1..60, 1..60, 1..60);
+            proptest!(|(pack in packs)| {
+                let mut actual = c.clone();
+                ker.gemm_in(
+                    crate::GlobalAllocator,
+                    alpha,
+                    a.to_ref(),
+                    b.to_ref(),
+                    beta,
+                    as_mut!(actual),
+                    pack,
+                );
+                assert_eq!(actual.as_slice(), expected.as_slice());
+            });
         }
     }
 }

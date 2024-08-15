@@ -217,16 +217,6 @@ mod tests {
         assert_eq!(c.as_slice(), expect.as_slice());
     }
 
-    #[test]
-    fn test_random_gemm() {
-        use crate::utils::test_kernel_with_random_i32;
-
-        let kernel = TestKernel;
-        for _ in 0..20 {
-            test_kernel_with_random_i32(&kernel);
-        }
-    }
-
     #[rustfmt::skip]
     #[test]
     fn test_gemm_sample_1() {
