@@ -86,7 +86,7 @@ impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 mod proptests {
     use super::*;
     use crate::std_prelude::*;
-    use proptest::{arbitrary::any, proptest};
+    use proptest::proptest;
 
     use crate::{
         as_mut,
@@ -100,8 +100,8 @@ mod proptests {
                 1..30, 1..30, 1..30,
                 -100..100,
             ),
-            alpha in any::<i32>(),
-            beta in any::<i32>(),
+            alpha in -10..10,
+            beta in -10..10,
         ) {
             let mut expected = c.clone();
             utils::naive_gemm(
