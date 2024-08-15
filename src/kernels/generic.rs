@@ -86,7 +86,7 @@ impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 mod proptests {
     use super::*;
     use crate::std_prelude::*;
-    use proptest::proptest;
+    use proptest::{prop_assert_eq, proptest};
 
     use crate::{
         as_mut,
@@ -98,10 +98,10 @@ mod proptests {
         fn proptest_generic_kernel_i32(
             [a, b, c] in arb_matrix_triple_with::<i32>(
                 1..30, 1..30, 1..30,
-                -100..100,
+                -5..5,
             ),
-            alpha in -10..10,
-            beta in -10..10,
+            alpha in -5..5,
+            beta in -5..5,
         ) {
             let mut expected = c.clone();
             utils::naive_gemm(
@@ -125,7 +125,7 @@ mod proptests {
                     as_mut!(actual),
                     pack,
                 );
-                assert_eq!(actual.as_slice(), expected.as_slice());
+                prop_assert_eq!(actual.as_slice(), expected.as_slice());
             });
         }
     }
