@@ -27,4 +27,5 @@ fn main() {
 
     kernel.gemm(alpha, a, b, beta, &mut c, pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
+    panic!("test");
 }
