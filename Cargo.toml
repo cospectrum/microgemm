@@ -21,7 +21,6 @@ exclude = [
     ".github/*",
     "tests/comparison.rs",
     "Makefile.toml",
-    "rust-toolchain.toml",
 ]
 
 [dependencies]

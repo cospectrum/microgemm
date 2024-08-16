@@ -189,7 +189,6 @@ Cargo.lock
 !CONTRIBUTING.md
 !assets
 
-!rust-toolchain.toml
 !Cargo.toml
 !Makefile.toml
 
