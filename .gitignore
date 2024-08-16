@@ -187,9 +187,10 @@ Cargo.lock
 !LICENSE-APACHE
 !LICENSE-MIT
 !CONTRIBUTING.md
+!assets
+
 !Cargo.toml
 !Makefile.toml
-!assets
 
 !tests
 !examples
