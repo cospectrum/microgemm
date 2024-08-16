@@ -78,7 +78,7 @@ use microgemm::{typenum::U4, Kernel, MatMut, MatRef};
 struct CustomKernel;
 
 impl Kernel for CustomKernel {
-    type Scalar = f64;
+    type Scalar = f64
     type Mr = U4;
     type Nr = U4;
 

@@ -76,7 +76,7 @@ pub fn arb_matrix_triple_with<T>(
     scalars: impl Strategy<Value = T> + Clone + 'static,
 ) -> BoxedStrategy<[Mat<T>; 3]>
 where
-    T: Arbitrary + fmt::Debug + Clone + 'static,
+    T: fmt::Debug + Clone + 'static,
 {
     let [m, k, n] = [m.into(), k.into(), n.into()];
     arb_matrix_with(m.clone(), k.clone(), scalars.clone())
@@ -120,7 +120,7 @@ pub(crate) fn arb_matrix_with<T>(
     scalars: impl Strategy<Value = T> + Clone + 'static,
 ) -> BoxedStrategy<Mat<T>>
 where
-    T: Arbitrary + fmt::Debug + Clone,
+    T: fmt::Debug + Clone,
 {
     layout_dims(nrows.into(), ncols.into())
         .prop_flat_map(move |((r, c), layout)| fixed_matrix(r, c, scalars.clone(), layout))

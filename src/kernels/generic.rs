@@ -85,48 +85,38 @@ impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 #[cfg(test)]
 mod proptests {
     use super::*;
-    use crate::std_prelude::*;
-    use proptest::{prop_assert_eq, proptest};
-
     use crate::{
-        as_mut,
-        utils::{self, arb_matrix_triple_with, arb_pack_sizes},
+        std_prelude::*,
+        utils::{is_debug_build, proptest_kernel, ProptestKernelCfg},
     };
+    use proptest::prelude::*;
 
-    proptest! {
-        #[test]
-        fn proptest_generic_kernel_i32(
-            [a, b, c] in arb_matrix_triple_with::<i32>(
-                1..30, 1..30, 1..30,
-                -5..5,
-            ),
-            alpha in -5..5,
-            beta in -5..5,
-        ) {
-            let mut expected = c.clone();
-            utils::naive_gemm(
-                alpha,
-                a.to_ref(),
-                b.to_ref(),
-                beta,
-                as_mut!(expected),
-            );
+    fn cfg_i32() -> ProptestKernelCfg<i32> {
+        let dim = if is_debug_build() { 17 } else { 83 };
+        ProptestKernelCfg::default()
+            .with_max_matrix_dim(dim)
+            .with_max_pack_dim(2 * dim + 1)
+            .with_scalar((-11..11).boxed())
+    }
 
-            let ker = GenericKernel2x2::new();
-            let packs = arb_pack_sizes(&ker, 1..60, 1..60, 1..60);
-            proptest!(|(pack in packs)| {
-                let mut actual = c.clone();
-                ker.gemm_in(
-                    crate::GlobalAllocator,
-                    alpha,
-                    a.to_ref(),
-                    b.to_ref(),
-                    beta,
-                    as_mut!(actual),
-                    pack,
-                );
-                prop_assert_eq!(actual.as_slice(), expected.as_slice());
-            });
-        }
+    #[test]
+    fn proptest_generic_kernel_2x2_i32() {
+        proptest_kernel(&GenericKernel2x2::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_4x4_i32() {
+        proptest_kernel(&GenericKernel4x4::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_8x8_i32() {
+        proptest_kernel(&GenericKernel8x8::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_16x16_i32() {
+        proptest_kernel(&GenericKernel16x16::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_32x32_i32() {
+        proptest_kernel(&GenericKernel32x32::new(), cfg_i32()).unwrap();
     }
 }
