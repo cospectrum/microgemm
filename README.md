@@ -16,6 +16,16 @@ Supports `no_std` and `no_alloc` environments.
 
 The implementation is based on the [BLIS](https://github.com/flame/blis) microkernel approach.
 
+## Content
+- [Install](#install)
+- [Usage](#usage)
+    - [gemm](#gemm)
+    - [Implemented Kernels](#implemented-kernels)
+    - [Custom Kernel Implementation](#custom-kernel-implementation)
+- [Benchmarks](#benchmarks)
+    - [f32](#f32)
+- [License](#license)
+
 ## Install
 ```sh
 cargo add microgemm
