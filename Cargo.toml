@@ -16,6 +16,7 @@ repository = "https://github.com/cospectrum/microgemm"
 readme = "README.md"
 categories = ["science", "mathematics", "wasm", "no-std", "no-std::no-alloc"]
 keywords = ["gemm", "matrix", "linear-algebra", "math"]
+exclude = ["tests/*", "benches/*", ".github/*", "Makefile.toml"]
 
 [dependencies]
 generic-array = { version = "1.0.0", default-features = false }
