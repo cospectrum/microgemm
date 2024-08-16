@@ -19,8 +19,9 @@ keywords = ["gemm", "matrix", "linear-algebra", "math"]
 
 exclude = [
     "tests/*",
-    "benches/*",
     ".github/*",
+    "benches/cache.py",
+    "benches/README.md",
     "Makefile.toml",
     "rust-toolchain.toml",
 ]
