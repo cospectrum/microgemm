@@ -15,12 +15,6 @@ impl<'a, T> MatMut<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<MatRef<'a, T>> for MatRef<'a, T> {
-    fn as_ref(&self) -> &MatRef<'a, T> {
-        self
-    }
-}
-
 impl<'a, T> AsMut<MatMut<'a, T>> for MatMut<'a, T> {
     fn as_mut(&mut self) -> &mut MatMut<'a, T> {
         self

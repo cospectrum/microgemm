@@ -60,8 +60,8 @@ macro_rules! impl_generic_square_kernel {
             fn microkernel(
                 &self,
                 alpha: Self::Scalar,
-                lhs: &crate::MatRef<Self::Scalar>,
-                rhs: &crate::MatRef<Self::Scalar>,
+                lhs: crate::MatRef<Self::Scalar>,
+                rhs: crate::MatRef<Self::Scalar>,
                 beta: Self::Scalar,
                 dst: &mut crate::MatMut<Self::Scalar>,
             ) {
@@ -83,44 +83,40 @@ impl_generic_square_kernel!(GenericKernel16x16, 16, U16);
 impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 
 #[cfg(test)]
-mod tests {
+mod proptests {
     use super::*;
-    use crate::{utils::*, Kernel};
-    use rand::{thread_rng, Rng};
+    use crate::{
+        std_prelude::*,
+        utils::{is_debug_build, proptest_kernel, ProptestKernelCfg},
+    };
+    use proptest::prelude::*;
 
-    #[test]
-    fn test_generic_kernels_i32() {
-        test_kernel_i32(GenericKernel2x2::new());
-        test_kernel_i32(GenericKernel4x4::new());
-        test_kernel_i32(GenericKernel8x8::new());
-        test_kernel_i32(GenericKernel16x16::new());
-        test_kernel_i32(GenericKernel32x32::new());
+    fn cfg_i32() -> ProptestKernelCfg<i32> {
+        let dim = if is_debug_build() { 17 } else { 83 };
+        ProptestKernelCfg::default()
+            .with_max_matrix_dim(dim)
+            .with_max_pack_dim(2 * dim + 1)
+            .with_scalar((-11..11).boxed())
     }
 
     #[test]
-    fn test_generic_kernels_f32() {
-        test_kernel_f32(GenericKernel2x2::new());
-        test_kernel_f32(GenericKernel4x4::new());
-        test_kernel_f32(GenericKernel8x8::new());
-        test_kernel_f32(GenericKernel16x16::new());
-        test_kernel_i32(GenericKernel32x32::new());
+    fn proptest_generic_kernel_2x2_i32() {
+        proptest_kernel(&GenericKernel2x2::new(), cfg_i32()).unwrap();
     }
-
-    fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
-        let cmp = |expect: &[f32], got: &[f32]| {
-            let eps = 75.0 * f32::EPSILON;
-            assert_approx_eq(expect, got, eps);
-        };
-        let mut rng = thread_rng();
-
-        for _ in 0..20 {
-            let scalar = || rng.gen_range(-1.0..1.0);
-            random_kernel_test(&kernel, scalar, cmp);
-        }
+    #[test]
+    fn proptest_generic_kernel_4x4_i32() {
+        proptest_kernel(&GenericKernel4x4::new(), cfg_i32()).unwrap();
     }
-    fn test_kernel_i32(kernel: impl Kernel<Scalar = i32>) {
-        for _ in 0..20 {
-            test_kernel_with_random_i32(&kernel);
-        }
+    #[test]
+    fn proptest_generic_kernel_8x8_i32() {
+        proptest_kernel(&GenericKernel8x8::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_16x16_i32() {
+        proptest_kernel(&GenericKernel16x16::new(), cfg_i32()).unwrap();
+    }
+    #[test]
+    fn proptest_generic_kernel_32x32_i32() {
+        proptest_kernel(&GenericKernel32x32::new(), cfg_i32()).unwrap();
     }
 }

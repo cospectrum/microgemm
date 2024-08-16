@@ -1,7 +1,7 @@
 use core::marker::PhantomData;
 use num_traits::Zero;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MatBase<V, T> {
     pub(super) nrows: usize,
     pub(super) ncols: usize,
@@ -41,6 +41,15 @@ impl<V, T> MatBase<V, T> {
         self.col_stride
     }
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
+        debug_assert!(row < self.nrows());
+        debug_assert!(col < self.ncols());
+        self.idx_unchecked(row, col)
+    }
+    pub(crate) fn in_bounds(&self, row: usize, col: usize) -> bool {
+        row < self.nrows() && col < self.ncols()
+    }
+    #[inline]
+    pub(crate) fn idx_unchecked(&self, row: usize, col: usize) -> usize {
         row * self.row_stride + col * self.col_stride
     }
 }
@@ -102,7 +111,7 @@ where
         self.as_slice()[self.idx(row, col)]
     }
     pub(crate) fn get_or(&self, row: usize, col: usize, default: T) -> T {
-        if row < self.nrows && col < self.ncols {
+        if self.in_bounds(row, col) {
             self.get(row, col)
         } else {
             default

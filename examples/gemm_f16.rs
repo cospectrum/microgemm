@@ -25,6 +25,6 @@ fn main() {
 
     let (alpha, beta) = (f16::ONE, f16::ZERO);
 
-    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
+    kernel.gemm(alpha, a, b, beta, &mut c, pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }

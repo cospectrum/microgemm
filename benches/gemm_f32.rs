@@ -15,7 +15,7 @@ fn bench_gemm(criterion: &mut Criterion) {
     let n = DIM;
     let mkn = [m, k, n];
 
-    let pack_sizes = &PackSizes {
+    let pack_sizes = PackSizes {
         mc: m,
         kc: k,
         nc: n,
@@ -41,7 +41,7 @@ fn bench_kernel_with(
     name: &str,
     kernel: &impl Kernel<Scalar = f32>,
     mkn: [usize; 3],
-    pack_sizes: &PackSizes,
+    pack_sizes: PackSizes,
 ) {
     let [m, k, n] = mkn;
     let a = black_box(vec![0f32; m * k]);
@@ -54,7 +54,7 @@ fn bench_kernel_with(
     let mut buf = black_box(vec![0f32; pack_sizes.buf_len()]);
 
     let mut f = || {
-        kernel.gemm(alpha, &a, &b, beta, &mut c, pack_sizes, &mut buf);
+        kernel.gemm(alpha, a, b, beta, &mut c, pack_sizes, &mut buf);
     };
     group.bench_function(name, |bencher| bencher.iter(&mut f));
 }

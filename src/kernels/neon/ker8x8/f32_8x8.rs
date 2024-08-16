@@ -9,8 +9,8 @@ impl Kernel for NeonKernel8x8<f32> {
     fn microkernel(
         &self,
         alpha: f32,
-        lhs: &MatRef<f32>,
-        rhs: &MatRef<f32>,
+        lhs: MatRef<f32>,
+        rhs: MatRef<f32>,
         beta: f32,
         dst: &mut MatMut<f32>,
     ) {
@@ -124,61 +124,6 @@ fn neon_8x8_microkernel_f32(
             vst1q_f32(c![i, 4], ab12[i]);
             vst1q_f32(c![i + 4, 0], ab21[i]);
             vst1q_f32(c![i + 4, 4], ab22[i]);
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::arch::is_aarch64_feature_detected;
-
-    use super::*;
-    use crate::kernels::GenericKernel8x8;
-    use crate::utils::*;
-
-    use rand::{thread_rng, Rng};
-
-    fn neon_kernel<T>() -> NeonKernel8x8<T> {
-        if is_aarch64_feature_detected!("neon") {
-            unsafe { NeonKernel8x8::new() }
-        } else {
-            panic!("neon feature is not supported");
-        }
-    }
-
-    #[test]
-    fn test_neon_naive_f32() {
-        let kernel = &neon_kernel::<f32>();
-        let mut rng = thread_rng();
-        let cmp = |expect: &[f32], got: &[f32]| {
-            let eps = 80.0 * f32::EPSILON;
-            assert_approx_eq(expect, got, eps);
-        };
-        for _ in 0..40 {
-            let scalar = || rng.gen_range(-1.0..1.0);
-            random_kernel_test(kernel, scalar, cmp);
-        }
-    }
-
-    #[test]
-    fn test_neon_f32() {
-        const DIM: usize = 8;
-
-        let generic_kernel = &GenericKernel8x8::<f32>::new();
-        let neon_kernel = &neon_kernel::<f32>();
-
-        let mut rng = thread_rng();
-        let cmp = |expect: &[f32], got: &[f32]| {
-            let eps = 75.0 * f32::EPSILON;
-            assert_approx_eq(expect, got, eps);
-        };
-
-        for _ in 0..60 {
-            let mc = rng.gen_range(1..20) * DIM;
-            let nc = rng.gen_range(1..20) * DIM;
-            let scalar = || rng.gen_range(-1.0..1.0);
-
-            cmp_kernels_with_random_data(generic_kernel, neon_kernel, scalar, cmp, mc, nc);
         }
     }
 }

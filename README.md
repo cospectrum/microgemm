@@ -4,6 +4,7 @@
 [![github]](https://github.com/cospectrum/microgemm)
 [![latest_version]][crates.io]
 [![docs.rs]](https://docs.rs/microgemm)
+[![dependency status](https://deps.rs/repo/github/cospectrum/microgemm/status.svg)](https://deps.rs/repo/github/cospectrum/microgemm)
 
 [github]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
 [latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
@@ -54,7 +55,7 @@ fn main() {
     let mut c = MatMut::row_major(m, n, &mut c);
 
     // c <- alpha a b + beta c
-    kernel.gemm(alpha, &a, &b, beta, &mut c, &pack_sizes, &mut packing_buf);
+    kernel.gemm(alpha, a, b, beta, &mut c, pack_sizes, &mut packing_buf);
     println!("{:?}", c.as_slice());
 }
 ```
@@ -84,8 +85,8 @@ impl Kernel for CustomKernel {
     fn microkernel(
         &self,
         alpha: f64,
-        lhs: &MatRef<f64>,
-        rhs: &MatRef<f64>,
+        lhs: MatRef<f64>,
+        rhs: MatRef<f64>,
         beta: f64,
         dst: &mut MatMut<f64>,
     ) {

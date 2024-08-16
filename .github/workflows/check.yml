@@ -6,6 +6,7 @@
 # - hack: check combinations of feature flags
 # - msrv: check that the msrv specified in the crate is correct
 # - semver: check API changes for semver violations.
+# - examples: run examples
 permissions:
   contents: read
 # This configuration allows maintainers of this repo to create a branch and pull request based on
@@ -120,3 +121,15 @@ jobs:
         uses: actions/checkout@v3
       - name: Check semver
         uses: obi1kenobi/cargo-semver-checks-action@v2
+  examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install stable
+        uses: dtolnay/rust-toolchain@stable
+      - name: cargo run --example
+        run: |
+          for example in examples/*.rs
+          do
+            cargo run --example "$(basename "${example%.rs}")"
+          done

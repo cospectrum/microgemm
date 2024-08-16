@@ -1,9 +1,10 @@
-use crate::{MatMut, MatRef};
+use crate::std_prelude::*;
+use crate::{MatMut, MatRef, Zero};
 use core::ops::{Add, Mul};
 
-pub fn naive_gemm<T>(alpha: T, a: &MatRef<T>, b: &MatRef<T>, beta: T, c: &mut MatMut<T>)
+pub fn naive_gemm<T>(alpha: T, a: MatRef<T>, b: MatRef<T>, beta: T, c: &mut MatMut<T>)
 where
-    T: Copy + Add<Output = T> + Mul<Output = T>,
+    T: Copy + Add<Output = T> + Mul<Output = T> + Zero,
 {
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(b.ncols(), c.ncols());
@@ -16,7 +17,7 @@ where
             let dot = (0..k)
                 .map(|h| a.get(i, h) * b.get(h, j))
                 .reduce(|accum, x| accum + x)
-                .unwrap();
+                .unwrap_or(T::zero());
             let z = c.get_mut(i, j);
             *z = alpha * dot + beta * *z;
         }
@@ -48,7 +49,7 @@ mod tests {
             140, 146,
             320, 335,
         ];
-        naive_gemm(1, &a, &b, 0, c.as_mut());
+        naive_gemm(1, a, b, 0, c.as_mut());
         assert_eq!(c.as_slice(), expect);
 
         let mut c = [-1; 4];
@@ -57,7 +58,7 @@ mod tests {
             140, 320,
             146, 335,
         ];
-        naive_gemm(1, &a, &b, 0, c.as_mut());
+        naive_gemm(1, a, b, 0, c.as_mut());
         assert_eq!(c.as_slice(), expect);
     }
 
@@ -90,7 +91,7 @@ mod tests {
         let b = MatRef::col_major(3, 2, b.as_ref());
         let mut c = MatMut::row_major(2, 2, c.as_mut());
 
-        naive_gemm(alpha, a.as_ref(), b.as_ref(), beta, c.as_mut());
+        naive_gemm(alpha, a, b, beta, c.as_mut());
         assert_eq!(c.as_slice(), expect);
     }
 
@@ -101,13 +102,13 @@ mod tests {
             1, 0, 2,
             0, -1, 3,
         ];
-        let a = &MatRef::row_major(2, 3, a.as_ref());
+        let a = MatRef::row_major(2, 3, a.as_ref());
         let b = [
             2, -1,
             0, 5,
             1, 1,
         ];
-        let b = &MatRef::row_major(3, 2, b.as_ref());
+        let b = MatRef::row_major(3, 2, b.as_ref());
 
         let mut c = [-9; 2 * 2];
         let c = &mut MatMut::row_major(2, 2, c.as_mut());

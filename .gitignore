@@ -183,7 +183,6 @@ Cargo.lock
 
 !.gitignore
 !.github
-!.pre-commit-config.yaml
 !README.md
 !LICENSE-APACHE
 !LICENSE-MIT
@@ -196,5 +195,3 @@ Cargo.lock
 !examples
 !benches
 !src
-
-!check_no_std
