@@ -18,10 +18,8 @@ categories = ["science", "mathematics", "wasm", "no-std", "no-std::no-alloc"]
 keywords = ["gemm", "matrix", "linear-algebra", "math"]
 
 exclude = [
-    "tests/*",
     ".github/*",
-    "benches/cache.py",
-    "benches/README.md",
+    "tests/comparison.rs",
     "Makefile.toml",
     "rust-toolchain.toml",
 ]
