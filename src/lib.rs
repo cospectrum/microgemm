@@ -128,11 +128,11 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 #[macro_use]
 extern crate approx;
 
-#[cfg(test)]
+#[cfg(any(test, kani))]
 #[macro_use]
 extern crate std;
 
-#[cfg(test)]
+#[cfg(any(test, kani))]
 mod std_prelude {
     pub use std::prelude::rust_2021::*;
 }
