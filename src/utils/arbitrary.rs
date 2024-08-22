@@ -1,16 +1,12 @@
 use crate::mat::base::MatBase;
-use crate::PackSizes;
-use crate::{Kernel, MatRef};
+use crate::{Kernel, MatRef, PackSizes};
 use proptest::prelude::*;
 use std::prelude::rust_2021::*;
 use std::{fmt, ops::RangeInclusive};
 
-use proptest::prop_oneof;
-use proptest::{
-    arbitrary::{any, Arbitrary},
-    sample::SizeRange,
-    strategy::{BoxedStrategy, Strategy},
-};
+#[allow(unused_imports)]
+use proptest::prelude::*;
+use proptest::sample::SizeRange;
 
 type Mat<T> = MatBase<Vec<T>, T>;
 
@@ -44,9 +40,9 @@ pub fn arb_pack_sizes<T, K>(
 where
     K: Kernel<Scalar = T>,
 {
-    let mc = to_range(mc).prop_filter("mc mod mr", |&mc| mc % K::MR == 0);
+    let mc = to_range(mc).prop_filter("mr <= mc", |&mc| K::MR <= mc);
     let kc = to_range(kc);
-    let nc = to_range(nc).prop_filter("nc mod nr", |&nc| nc % K::NR == 0);
+    let nc = to_range(nc).prop_filter("nr <= nc", |&nc| K::NR <= nc);
 
     mc.prop_flat_map(move |mc| {
         let nc = nc.clone();
@@ -94,7 +90,6 @@ where
         .boxed()
 }
 
-#[allow(dead_code)]
 pub fn arb_matrix<T>(
     nrows: impl Into<SizeRange>,
     ncols: impl Into<SizeRange>,

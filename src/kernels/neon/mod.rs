@@ -7,7 +7,7 @@ pub use ker8x8::NeonKernel8x8;
 #[cfg(test)]
 mod proptests {
     use super::*;
-    use crate::utils::{assert_approx_eq, is_debug_build, proptest_kernel, ProptestKernelCfg};
+    use crate::utils::{assert_approx_eq, proptest_kernel, ProptestKernelCfg};
     use proptest::{strategy::Strategy, test_runner::TestCaseResult};
     use std::arch::is_aarch64_feature_detected;
 
@@ -32,7 +32,7 @@ mod proptests {
             assert_approx_eq(expect, got, eps);
             Ok(())
         };
-        let dim = if is_debug_build() { 23 } else { 80 };
+        let dim = 80;
         ProptestKernelCfg::default()
             .with_cmp(cmp)
             .with_scalar((-1f32..1.0).boxed())

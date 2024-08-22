@@ -3,11 +3,6 @@ mod pack_b;
 mod registers;
 mod sizes;
 
-mod colmajor;
-
-pub(crate) mod block {
-    pub(crate) use super::colmajor::ColMajor;
-}
 pub(crate) use pack_a::pack_a;
 pub(crate) use pack_b::pack_b;
 pub(crate) use registers::{registers_from_c, registers_to_c};
