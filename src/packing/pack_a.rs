@@ -17,6 +17,7 @@ pub(crate) fn pack_a<T>(
     let mc = rows.len();
     let kc = cols.len();
     assert_eq!(apack.len(), mc * kc);
+    assert!(mr <= mc);
     assert_eq!(mc % mr, 0);
 
     assert!(cols.end <= a.ncols());
@@ -173,6 +174,7 @@ mod tests {
         let mc = rows.len();
         let kc = cols.len();
         assert_eq!(apack.len(), mc * kc);
+        assert!(mr <= mc);
         assert_eq!(mc % mr, 0);
 
         assert!(cols.end <= a.ncols());
@@ -197,28 +199,25 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::tests::apack_ref;
-    use super::*;
+    use super::{tests::apack_ref, *};
     use crate::utils::arb_matrix;
-    use proptest::prelude::*;
-    use proptest::proptest;
+    use proptest::{prelude::*, proptest};
 
     proptest! {
         #[test]
         fn proptest_pack_a(
-            a in arb_matrix::<i32>(1..20, 1..20),
-            mr in (1..9usize),
+            a in arb_matrix::<i8>(1..40, 1..40),
+            mr in (1..41usize),
         ) {
-            let a_ = a.clone();
-            let a_ref = a_.to_ref();
+            let a_ref = a.to_ref();
 
-            let arb_rows = (0..a.nrows()).prop_flat_map(|start| {
-                let take = 50;
-                (start..start+take).prop_map(move |end| start..end)
-            }).prop_filter("mc mod mr", |rows| rows.len() % mr == 0);
-            let arb_cols = (0..=a.ncols()).prop_flat_map(move |start| {
-                (start..=a.ncols()).prop_map(move |end| start..end)
-            });
+            const TAKE: usize = 50;
+            let arb_rows = (0..a.nrows())
+                .prop_flat_map(|start| (start..start + TAKE).prop_map(move |end| start..end))
+                .prop_filter("rows", |rows| mr <= rows.len() && rows.len() % mr == 0);
+
+            let arb_cols = (0..=a.ncols())
+                .prop_flat_map(|start| (start..=a.ncols()).prop_map(move |end| start..end));
 
             proptest!(|(rows in arb_rows, cols in arb_cols)| {
                 let mut apack = vec![-1; rows.len() * cols.len()];
