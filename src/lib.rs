@@ -33,18 +33,13 @@ You can implement it yourself or use [`kernels`] that are already provided out o
 use microgemm::{kernels::GenericKernel8x8, Kernel as _, MatMut, MatRef, PackSizes};
 
 let kernel = GenericKernel8x8::<f32>::new();
-assert_eq!(kernel.mr(), 8);
-assert_eq!(kernel.nr(), 8);
+let [m, k, n] = [100, 380, 250];
 
-let pack_sizes = PackSizes {
-    mc: 5 * kernel.mr(), // MC must be divisible by MR
-    kc: 190,
-    nc: 9 * kernel.nr(), // NC must be divisible by NR
-};
+let [mc, kc, nc] = [m, k / 2, n];
+let pack_sizes = PackSizes { mc, kc, nc };
 let mut packing_buf = vec![0.0; pack_sizes.buf_len()];
 
 let (alpha, beta) = (2.0, -3.0);
-let (m, k, n) = (100, 380, 250);
 
 let a = vec![2.0; m * k];
 let b = vec![3.0; k * n];

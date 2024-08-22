@@ -45,6 +45,7 @@ impl<V, T> MatBase<V, T> {
         debug_assert!(col < self.ncols());
         row * self.row_stride + col * self.col_stride
     }
+    #[inline]
     pub(crate) fn in_bounds(&self, row: usize, col: usize) -> bool {
         row < self.nrows() && col < self.ncols()
     }

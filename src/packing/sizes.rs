@@ -1,5 +1,4 @@
 use crate::Kernel;
-use num_traits::{One, Zero};
 
 #[derive(Debug, Clone, Copy)]
 pub struct PackSizes {
@@ -12,19 +11,22 @@ impl PackSizes {
     pub const fn buf_len(self) -> usize {
         self.mc * self.kc + self.kc * self.nc
     }
-    pub(crate) fn check<T, K>(self, _: &K)
+    pub(crate) fn clamped<T, K>(self, _: &K) -> Self
     where
-        T: One + Zero + Copy,
         K: Kernel<Scalar = T> + ?Sized,
     {
         let mr = K::MR;
         let nr = K::NR;
         assert!(mr <= self.mc);
         assert!(nr <= self.nc);
-        assert_eq!(self.mc % mr, 0);
-        assert_eq!(self.nc % nr, 0);
+
+        let mc = self.mc - self.mc % mr;
+        let kc = self.kc;
+        let nc = self.nc - self.nc % nr;
+        Self { mc, kc, nc }
     }
     pub(crate) fn split_buf<T>(self, buf: &mut [T]) -> (&mut [T], &mut [T]) {
+        assert_eq!(self.buf_len(), buf.len());
         let (apack, bpack) = buf.split_at_mut(self.mc * self.kc);
         (apack, bpack)
     }

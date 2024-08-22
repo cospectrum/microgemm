@@ -20,36 +20,33 @@ pub(crate) fn gemm_with_kernel<T, K>(
     T: Copy + Zero + One,
     K: Kernel<Scalar = T> + ?Sized,
 {
-    pack_sizes.check(kernel);
-    assert_eq!(pack_sizes.buf_len(), packing_buf.len());
-    let (apack, bpack) = pack_sizes.split_buf(packing_buf);
-
-    let zero = T::zero();
-    let mut dst_buf = GenericArray::<T, Product<K::Mr, K::Nr>>::generate(|_| zero);
-    let dst_buf = dst_buf.as_mut_slice();
-
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
     assert_eq!(b.ncols(), c.ncols());
-    let (m, k, n) = (a.nrows(), a.ncols(), c.ncols());
-
-    let mc = pack_sizes.mc;
-    let nc = pack_sizes.nc;
-    let kc = pack_sizes.kc;
-
+    let [m, k, n] = [a.nrows(), a.ncols(), c.ncols()];
     let mr = K::MR;
     let nr = K::NR;
 
+    assert_eq!(pack_sizes.buf_len(), packing_buf.len());
+    let pack_sizes = pack_sizes.clamped(kernel);
+    let (apack, bpack) = pack_sizes.split_buf(packing_buf[..pack_sizes.buf_len()].as_mut());
+
+    let [mc, nc] = [pack_sizes.mc, pack_sizes.nc];
+    assert!(mr <= mc);
+    assert_eq!(mc % mr, 0);
+    assert!(nr <= nc);
+    assert_eq!(nc % nr, 0);
+
+    let zero = Zero::zero();
+    let mut dst_buf = GenericArray::<T, Product<K::Mr, K::Nr>>::generate(|_| zero);
+    let dst_buf = dst_buf.as_mut_slice();
+
     for jc in (0..n).step_by(nc) {
-        for (l4, pc) in (0..k).step_by(kc).enumerate() {
+        for (l4, pc) in (0..k).step_by(pack_sizes.kc).enumerate() {
             let beta = if l4 == 0 { beta } else { One::one() };
 
-            let kc = (pc + kc).min(k) - pc;
+            let kc = (pc + pack_sizes.kc).min(k) - pc;
             debug_assert!(pc + kc <= k);
-
-            let tail = nr - (n % nr);
-            let nc = (jc + nc).min(n + tail) - jc;
-            debug_assert!(jc + nc <= n + tail);
 
             let bpack = {
                 let rows = pc..pc + kc;
@@ -60,10 +57,6 @@ pub(crate) fn gemm_with_kernel<T, K>(
             };
 
             for ic in (0..m).step_by(mc) {
-                let tail = mr - (m % mr);
-                let mc = (ic + mc).min(m + tail) - ic;
-                debug_assert!(ic + mc <= m + tail);
-
                 let apack = {
                     let rows = ic..ic + mc;
                     let cols = pc..pc + kc;
