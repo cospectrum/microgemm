@@ -43,7 +43,6 @@ mod proptests {
     #[test]
     fn proptest_neon_kernel_8x8_f32() {
         proptest_kernel(&neon_kernel_8x8(), cfg_f32()).unwrap();
-        panic!("test");
     }
     #[test]
     fn proptest_neon_kernel_4x4_f32() {
