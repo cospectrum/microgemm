@@ -92,7 +92,7 @@ mod proptests {
     use proptest::prelude::*;
 
     fn cfg_i32() -> ProptestKernelCfg<i32> {
-        let dim = if is_debug_build() { 17 } else { 83 };
+        let dim = if is_debug_build() { 38 } else { 83 };
         ProptestKernelCfg::default()
             .with_max_matrix_dim(dim)
             .with_max_pack_dim(2 * dim + 1)
