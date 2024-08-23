@@ -66,9 +66,9 @@ fn matrices<'a, T>(
     c: &'a mut [T],
 ) -> (MatRef<'a, T>, MatRef<'a, T>, MatMut<'a, T>) {
     let [m, k, n] = mkn;
-    let a = MatRef::row_major(m, k, a);
-    let b = MatRef::col_major(k, n, b);
-    let c = MatMut::row_major(m, n, c);
+    let a = MatRef::col_major(m, k, a);
+    let b = MatRef::row_major(k, n, b);
+    let c = MatMut::col_major(m, n, c);
     (a, b, c)
 }
 

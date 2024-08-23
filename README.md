@@ -123,11 +123,11 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 ####  aarch64 (M1)
 ```
    n  NeonKernel8x8           faer matrixmultiply
- 128         75.5µs        242.6µs         46.2µs
- 256        466.3µs          3.2ms        518.2µs
- 512            3ms         15.9ms          2.7ms
-1024         23.9ms        128.4ms           22ms
-2048          191ms             1s        182.8ms
+ 128         64.6µs        256.3µs         49.5µs
+ 256        419.5µs          3.2ms        518.2µs
+ 512          2.9ms         16.3ms          2.8ms
+1024           23ms        132.7ms         22.5ms
+2048        185.5ms             1s        182.8ms
 ```
 
 ## License

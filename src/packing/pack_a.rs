@@ -24,7 +24,8 @@ pub(crate) fn pack_a<T>(
 
     assert!(cols.end <= a.ncols());
     assert!(rows.start < a.nrows());
-    assert!(a.row_stride() > 0);
+    let stride = a.row_stride();
+    assert!(stride > 0);
 
     let mut it = apack;
     let rows_offset = rows.start;
@@ -42,19 +43,20 @@ pub(crate) fn pack_a<T>(
         for col in cols.clone() {
             debug_assert!(col < a.ncols());
             let idx = a.idx(block_rows.start, col);
-            let lane = a.as_slice()[idx..]
-                .iter()
-                .step_by(a.row_stride())
-                .take(block_rows.len());
-            debug_assert_eq!(lane.len(), block_rows.len());
-            let n = lane.len();
 
-            let zip = lane.zip(it[..n].as_mut());
-            #[cfg(not(kani))]
-            for (&src, dst) in zip {
-                *dst = src;
+            if stride == 1 {
+                let lane = &a.as_slice()[idx..idx + mr];
+                it[..mr].copy_from_slice(lane);
+            } else {
+                let lane = a.as_slice()[idx..].iter().step_by(stride).take(mr);
+                debug_assert_eq!(lane.len(), mr);
+                let zip = lane.zip(&mut it[..mr]);
+                #[cfg(not(kani))]
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
-            it = it[n..].as_mut();
+            it = &mut it[mr..];
         }
     }
 
@@ -65,34 +67,30 @@ pub(crate) fn pack_a<T>(
         debug_assert!(block_rows.start < block_rows.end);
         debug_assert_eq!(block_rows.len(), remains);
 
-        let tail_len = mr - remains;
-        debug_assert_eq!(block_rows.len() + tail_len, mr);
-
         for col in cols.clone() {
             debug_assert!(col < a.ncols());
             let idx = a.idx(block_rows.start, col);
-            let lane = a.as_slice()[idx..]
-                .iter()
-                .step_by(a.row_stride())
-                .copied()
-                .take(block_rows.len());
-            debug_assert_eq!(lane.len(), block_rows.len());
-            let tail = core::iter::repeat(T::zero()).take(tail_len);
 
-            let n = lane.len() + tail_len;
-            let zip = lane.chain(tail).zip(it[..n].as_mut());
-            #[cfg(not(kani))]
-            for (src, dst) in zip {
-                *dst = src;
+            if stride == 1 {
+                let lane = &a.as_slice()[idx..idx + remains];
+                it[..remains].copy_from_slice(lane);
+            } else {
+                let lane = a.as_slice()[idx..].iter().step_by(stride).take(remains);
+                debug_assert_eq!(lane.len(), remains);
+                let zip = lane.zip(&mut it[..remains]);
+                #[cfg(not(kani))]
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
-            it = it[n..].as_mut();
+            #[cfg(not(kani))]
+            it[remains..mr].fill(T::zero());
+            it = &mut it[mr..];
         }
     }
 
     #[cfg(not(kani))]
-    for dst in it {
-        *dst = T::zero();
-    }
+    it.fill(T::zero());
 }
 
 #[cfg(test)]

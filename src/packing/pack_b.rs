@@ -24,9 +24,10 @@ pub(crate) fn pack_b<T>(
 
     assert!(rows.end <= b.nrows());
     assert!(cols.start < b.ncols());
-    assert!(b.col_stride() > 0);
+    let stride = b.col_stride();
+    assert!(stride > 0);
 
-    let mut it = bpack.iter_mut();
+    let mut it = bpack;
     let cols_offset = cols.start;
 
     let cols_stop_at = cols.end.min(b.ncols());
@@ -42,14 +43,19 @@ pub(crate) fn pack_b<T>(
         for row in rows.clone() {
             debug_assert!(row < b.nrows());
             let idx = b.idx(row, block_cols.start);
-            let lane = b.as_slice()[idx..]
-                .iter()
-                .step_by(b.col_stride())
-                .take(block_cols.len());
-            for &val in lane {
-                let dst = it.next().unwrap();
-                *dst = val;
+
+            if stride == 1 {
+                let lane = &b.as_slice()[idx..idx + nr];
+                it[..nr].copy_from_slice(lane);
+            } else {
+                let lane = b.as_slice()[idx..].iter().step_by(stride).take(nr);
+                debug_assert_eq!(lane.len(), nr);
+                let zip = lane.zip(&mut it[..nr]);
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
+            it = &mut it[nr..];
         }
     }
 
@@ -66,22 +72,24 @@ pub(crate) fn pack_b<T>(
         for row in rows.clone() {
             debug_assert!(row < b.nrows());
             let idx = b.idx(row, block_cols.start);
-            let lane = b.as_slice()[idx..]
-                .iter()
-                .step_by(b.col_stride())
-                .copied()
-                .take(block_cols.len());
-            let tail = core::iter::repeat(T::zero()).take(tail_len);
-            for val in lane.chain(tail) {
-                let dst = it.next().unwrap();
-                *dst = val;
+
+            if stride == 1 {
+                let lane = &b.as_slice()[idx..idx + remains];
+                it[..remains].copy_from_slice(lane);
+            } else {
+                let lane = b.as_slice()[idx..].iter().step_by(stride).take(remains);
+                debug_assert_eq!(lane.len(), remains);
+                let zip = lane.zip(&mut it[..remains]);
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
+            it[remains..nr].fill(T::zero());
+            it = &mut it[nr..];
         }
     }
 
-    for dst in it {
-        *dst = T::zero();
-    }
+    it.fill(T::zero());
 }
 
 #[cfg(test)]
