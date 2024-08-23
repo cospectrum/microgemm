@@ -19,6 +19,7 @@ impl<T> Mat<T> {
             self.row_stride(),
             self.col_stride(),
         )
+        .unwrap()
     }
 }
 
@@ -28,6 +29,7 @@ macro_rules! as_mut {
         let [nrows, ncols] = [$mat.nrows(), $mat.ncols()];
         let [row_stride, col_stride] = [$mat.row_stride(), $mat.col_stride()];
         &mut $crate::MatMut::from_parts(nrows, ncols, $mat.as_mut_slice(), row_stride, col_stride)
+            .unwrap()
     }};
 }
 

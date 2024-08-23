@@ -16,12 +16,15 @@ pub(crate) fn pack_b<T>(
 {
     let kc = rows.len();
     let nc = cols.len();
-    assert_eq!(bpack.len(), kc * nc);
+    assert_eq!(bpack.len(), kc.checked_mul(nc).unwrap());
+
     assert!(nr <= nc);
+    assert!(nr > 0);
     assert_eq!(nc % nr, 0);
 
     assert!(rows.end <= b.nrows());
     assert!(cols.start < b.ncols());
+    assert!(b.col_stride() > 0);
 
     let mut it = bpack.iter_mut();
     let cols_offset = cols.start;
@@ -110,12 +113,15 @@ mod tests {
     {
         let kc = rows.len();
         let nc = cols.len();
-        assert_eq!(bpack.len(), kc * nc);
+        assert_eq!(bpack.len(), kc.checked_mul(nc).unwrap());
+
         assert!(nr <= nc);
+        assert!(nr > 0);
         assert_eq!(nc % nr, 0);
 
         assert!(rows.end <= b.nrows());
         assert!(cols.start < b.ncols());
+        assert!(b.col_stride() > 0);
 
         let number_of_blocks = nc / nr;
         let mut it = bpack.iter_mut();

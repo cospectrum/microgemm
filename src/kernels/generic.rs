@@ -8,9 +8,10 @@ use core::ops::{Add, Mul};
 
 fn loop_micropanels<T, const DIM: usize>(lhs: &[T], rhs: &[T], cols: &mut [T])
 where
-    T: Copy + Add<Output = T> + Mul<Output = T>,
+    T: Copy + Add<Output = T> + Mul<Output = T> + Zero,
 {
     assert_eq!(cols.len(), DIM * DIM);
+    assert!(DIM > 0);
     assert_eq!(lhs.len() % DIM, 0);
     assert_eq!(lhs.len(), rhs.len());
 

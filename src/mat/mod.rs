@@ -12,6 +12,7 @@ impl<'a, T> MatMut<'a, T> {
             self.row_stride,
             self.col_stride,
         )
+        .unwrap()
     }
 }
 

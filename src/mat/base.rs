@@ -1,5 +1,5 @@
+use crate::Zero;
 use core::marker::PhantomData;
-use num_traits::Zero;
 
 #[derive(Debug, Clone, Copy)]
 pub struct MatBase<V, T> {
@@ -12,22 +12,6 @@ pub struct MatBase<V, T> {
 }
 
 impl<V, T> MatBase<V, T> {
-    pub fn from_parts(
-        nrows: usize,
-        ncols: usize,
-        values: V,
-        row_stride: usize,
-        col_stride: usize,
-    ) -> Self {
-        Self {
-            values,
-            nrows,
-            ncols,
-            row_stride,
-            col_stride,
-            marker: PhantomData,
-        }
-    }
     pub fn nrows(&self) -> usize {
         self.nrows
     }
@@ -39,6 +23,14 @@ impl<V, T> MatBase<V, T> {
     }
     pub fn col_stride(&self) -> usize {
         self.col_stride
+    }
+    pub(crate) fn checked_idx(&self, row: usize, col: usize) -> Option<usize> {
+        if !self.in_bounds(row, col) {
+            return None;
+        }
+        let row_at = row.checked_mul(self.row_stride)?;
+        let col_at = col.checked_mul(self.col_stride)?;
+        row_at.checked_add(col_at)
     }
     pub(crate) fn idx(&self, row: usize, col: usize) -> usize {
         debug_assert!(row < self.nrows());
@@ -55,15 +47,51 @@ impl<V, T> MatBase<V, T>
 where
     V: AsRef<[T]>,
 {
-    pub fn row_major(nrows: usize, ncols: usize, values: V) -> Self {
-        assert_eq!(values.as_ref().len(), nrows * ncols);
-        let (row_stride, col_stride) = (ncols, 1);
-        Self::from_parts(nrows, ncols, values, row_stride, col_stride)
+    /// Creates a matrix from a given number of rows/columns, values and strides.
+    /// Returns `None` if the last index overflows.
+    pub fn from_parts(
+        nrows: usize,
+        ncols: usize,
+        values: V,
+        row_stride: usize,
+        col_stride: usize,
+    ) -> Option<Self> {
+        let mat = Self {
+            values,
+            nrows,
+            ncols,
+            row_stride,
+            col_stride,
+            marker: PhantomData,
+        };
+        let last_row = nrows.checked_sub(1)?;
+        let last_col = ncols.checked_sub(1)?;
+        let last_idx = mat.checked_idx(last_row, last_col)?;
+        if last_idx < mat.as_slice().len() {
+            Some(mat)
+        } else {
+            None
+        }
     }
+    /// Creates a matrix with row-major layout.
+    ///
+    /// # Panics
+    /// 1. If `values.as_ref().len() != nrows * ncols`.
+    /// 2. If the last index overflows.
+    pub fn row_major(nrows: usize, ncols: usize, values: V) -> Self {
+        assert_eq!(values.as_ref().len(), nrows.checked_mul(ncols).unwrap());
+        let (row_stride, col_stride) = (ncols, 1);
+        Self::from_parts(nrows, ncols, values, row_stride, col_stride).unwrap()
+    }
+    /// Creates a matrix with col-major layout.
+    ///
+    /// # Panics
+    /// 1. If `values.as_ref().len() != nrows * ncols`.
+    /// 2. If the last index overflows.
     pub fn col_major(nrows: usize, ncols: usize, values: V) -> Self {
-        assert_eq!(values.as_ref().len(), nrows * ncols);
+        assert_eq!(values.as_ref().len(), nrows.checked_mul(ncols).unwrap());
         let (row_stride, col_stride) = (1, nrows);
-        Self::from_parts(nrows, ncols, values, row_stride, col_stride)
+        Self::from_parts(nrows, ncols, values, row_stride, col_stride).unwrap()
     }
     /// Extracts a slice containing the matrix values.
     ///
@@ -89,10 +117,9 @@ where
     V: AsRef<[T]>,
     T: Copy,
 {
-    /// Returns an element at (row, col)
+    /// Returns an element at (row, col).
     ///
     /// # Panics
-    ///
     /// Panics if `row * mat.row_stride() + col * mat.col_stride() >= mat.as_slice().len()`
     ///
     /// # Examples
