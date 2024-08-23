@@ -52,7 +52,7 @@ jobs:
           LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
           RUSTFLAGS: "-Z sanitizer=leak"
   kani:
-    runs-on: macos-13.6
+    runs-on: macos-13
     steps:
       - name: 'Checkout'
         uses: actions/checkout@v3
