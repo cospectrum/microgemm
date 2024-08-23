@@ -40,3 +40,6 @@ harness = false
 
 [profile.dev]
 opt-level = 1
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
