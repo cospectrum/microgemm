@@ -24,12 +24,21 @@ pub(crate) fn gemm_with_kernel<T, K>(
     assert_eq!(a.ncols(), b.nrows());
     assert_eq!(b.ncols(), c.ncols());
     let [m, k, n] = [a.nrows(), a.ncols(), c.ncols()];
+
+    assert_eq!(
+        packing_buf.len(),
+        pack_sizes
+            .checked_buf_len()
+            .expect("PackSizes::buf_len should not overflow")
+    );
+    let pack_sizes = pack_sizes.clamped(kernel);
+    let packing_buf = packing_buf[..pack_sizes.checked_buf_len().unwrap()].as_mut();
+    let (apack, bpack) = pack_sizes.split_buf(packing_buf);
+
     let mr = K::MR;
     let nr = K::NR;
-
-    assert_eq!(pack_sizes.buf_len(), packing_buf.len());
-    let pack_sizes = pack_sizes.clamped(kernel);
-    let (apack, bpack) = pack_sizes.split_buf(packing_buf[..pack_sizes.buf_len()].as_mut());
+    assert!(mr > 0);
+    assert!(nr > 0);
 
     let [mc, nc] = [pack_sizes.mc, pack_sizes.nc];
     assert!(mr <= mc);

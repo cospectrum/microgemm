@@ -35,9 +35,10 @@ fn neon_8x8_microkernel_f32(
     beta: f32,
     dst_colmajor: &mut [f32],
 ) {
+    const DIM: usize = 8;
     assert_eq!(lhs.len(), rhs.len());
-    assert_eq!(lhs.len(), 8 * kc);
-    assert_eq!(dst_colmajor.len(), 8 * 8);
+    assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
+    assert_eq!(dst_colmajor.len(), DIM * DIM);
 
     unsafe {
         inner(

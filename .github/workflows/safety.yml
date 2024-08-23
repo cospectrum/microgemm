@@ -2,6 +2,7 @@
 # removed. Runs:
 # - address sanitizer - detects memory errors
 # - leak sanitizer - detects memory leaks
+# - kani - verifies code snippets using model checking
 # See check.yml for information about how the concurrency cancellation and workflow triggering works
 permissions:
   contents: read
@@ -50,3 +51,13 @@ jobs:
         env:
           LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
           RUSTFLAGS: "-Z sanitizer=leak"
+  kani:
+    runs-on: macos-13
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v3
+      - name: 'cargo kani'
+        timeout-minutes: 120
+        uses: model-checking/kani-github-action@v1
+        with:
+          kani-version: '0.54.0'

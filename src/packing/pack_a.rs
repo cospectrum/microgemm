@@ -16,13 +16,18 @@ pub(crate) fn pack_a<T>(
 {
     let mc = rows.len();
     let kc = cols.len();
-    assert_eq!(apack.len(), mc * kc);
+    assert_eq!(apack.len(), mc.checked_mul(kc).unwrap());
+
+    assert!(mr <= mc);
+    assert!(mr > 0);
     assert_eq!(mc % mr, 0);
 
     assert!(cols.end <= a.ncols());
     assert!(rows.start < a.nrows());
+    let stride = a.row_stride();
+    assert!(stride > 0);
 
-    let mut it = apack.iter_mut();
+    let mut it = apack;
     let rows_offset = rows.start;
 
     let rows_stop_at = a.nrows().min(rows.end);
@@ -38,14 +43,20 @@ pub(crate) fn pack_a<T>(
         for col in cols.clone() {
             debug_assert!(col < a.ncols());
             let idx = a.idx(block_rows.start, col);
-            let lane = a.as_slice()[idx..]
-                .iter()
-                .step_by(a.row_stride())
-                .take(block_rows.len());
-            for &val in lane {
-                let dst = it.next().unwrap();
-                *dst = val;
+
+            if stride == 1 {
+                let lane = &a.as_slice()[idx..idx + mr];
+                it[..mr].copy_from_slice(lane);
+            } else {
+                let lane = a.as_slice()[idx..].iter().step_by(stride).take(mr);
+                debug_assert_eq!(lane.len(), mr);
+                let zip = lane.zip(&mut it[..mr]);
+                #[cfg(not(kani))]
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
+            it = &mut it[mr..];
         }
     }
 
@@ -56,34 +67,93 @@ pub(crate) fn pack_a<T>(
         debug_assert!(block_rows.start < block_rows.end);
         debug_assert_eq!(block_rows.len(), remains);
 
-        let tail_len = mr - remains;
-        debug_assert_eq!(block_rows.len() + tail_len, mr);
-
         for col in cols.clone() {
             debug_assert!(col < a.ncols());
             let idx = a.idx(block_rows.start, col);
-            let lane = a.as_slice()[idx..]
-                .iter()
-                .step_by(a.row_stride())
-                .copied()
-                .take(block_rows.len());
-            let tail = core::iter::repeat(T::zero()).take(tail_len);
-            for val in lane.chain(tail) {
-                let dst = it.next().unwrap();
-                *dst = val;
+
+            if stride == 1 {
+                let lane = &a.as_slice()[idx..idx + remains];
+                it[..remains].copy_from_slice(lane);
+            } else {
+                let lane = a.as_slice()[idx..].iter().step_by(stride).take(remains);
+                debug_assert_eq!(lane.len(), remains);
+                let zip = lane.zip(&mut it[..remains]);
+                #[cfg(not(kani))]
+                zip.for_each(|(&src, dst)| {
+                    *dst = src;
+                });
             }
+            #[cfg(not(kani))]
+            it[remains..mr].fill(T::zero());
+            it = &mut it[mr..];
         }
     }
 
-    for dst in it {
-        *dst = T::zero()
+    #[cfg(not(kani))]
+    it.fill(T::zero());
+}
+
+#[cfg(test)]
+mod reference {
+    use super::*;
+    use crate::std_prelude::Vec;
+
+    pub(super) fn apack_ref<T>(
+        mr: usize,
+        a: MatRef<T>,
+        rows: Range<usize>,
+        cols: Range<usize>,
+    ) -> Vec<T>
+    where
+        T: Zero + Copy,
+    {
+        let mut apack = vec![T::zero(); rows.len() * cols.len()];
+        pack_a_ref(mr, &mut apack, a, rows, cols);
+        apack
+    }
+
+    pub(super) fn pack_a_ref<T>(
+        mr: usize,
+        apack: &mut [T],
+        a: MatRef<T>,
+        rows: Range<usize>,
+        cols: Range<usize>,
+    ) where
+        T: Zero + Copy,
+    {
+        let mc = rows.len();
+        let kc = cols.len();
+        assert_eq!(apack.len(), mc.checked_mul(kc).unwrap());
+
+        assert!(mr <= mc);
+        assert!(mr > 0);
+        assert_eq!(mc % mr, 0);
+
+        assert!(cols.end <= a.ncols());
+        assert!(rows.start < a.nrows());
+        assert!(a.row_stride() > 0);
+
+        let number_of_blocks = mc / mr;
+        let mut it = apack.iter_mut();
+
+        let rows_offset = rows.start;
+
+        for nblock in 0..number_of_blocks {
+            let block_rows = rows_offset + mr * nblock..rows_offset + mr * (nblock + 1);
+            for col in cols.clone() {
+                for row in block_rows.clone() {
+                    let dst = it.next().unwrap();
+                    *dst = a.get_or_zero(row, col);
+                }
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::std_prelude::*;
+    use super::{reference::*, *};
+    use crate::std_prelude::Vec;
 
     fn apack<T: Copy + Zero>(
         mr: usize,
@@ -146,79 +216,29 @@ mod tests {
             apack(mr, a, rows.clone(), cols.clone(),)
         );
     }
-
-    pub(super) fn apack_ref<T>(
-        mr: usize,
-        a: MatRef<T>,
-        rows: Range<usize>,
-        cols: Range<usize>,
-    ) -> Vec<T>
-    where
-        T: Zero + Copy,
-    {
-        let mut apack = vec![T::zero(); rows.len() * cols.len()];
-        pack_a_ref(mr, &mut apack, a, rows, cols);
-        apack
-    }
-
-    pub(super) fn pack_a_ref<T>(
-        mr: usize,
-        apack: &mut [T],
-        a: MatRef<T>,
-        rows: Range<usize>,
-        cols: Range<usize>,
-    ) where
-        T: Zero + Copy,
-    {
-        let mc = rows.len();
-        let kc = cols.len();
-        assert_eq!(apack.len(), mc * kc);
-        assert_eq!(mc % mr, 0);
-
-        assert!(cols.end <= a.ncols());
-        assert!(rows.start < a.nrows());
-
-        let number_of_blocks = mc / mr;
-        let mut it = apack.iter_mut();
-
-        let rows_offset = rows.start;
-
-        for nblock in 0..number_of_blocks {
-            let block_rows = rows_offset + mr * nblock..rows_offset + mr * (nblock + 1);
-            for col in cols.clone() {
-                for row in block_rows.clone() {
-                    let dst = it.next().unwrap();
-                    *dst = a.get_or_zero(row, col);
-                }
-            }
-        }
-    }
 }
 
 #[cfg(test)]
 mod proptests {
-    use super::tests::apack_ref;
-    use super::*;
+    use super::{reference::*, *};
     use crate::utils::arb_matrix;
-    use proptest::prelude::*;
-    use proptest::proptest;
+    use proptest::{prelude::*, proptest};
 
     proptest! {
         #[test]
         fn proptest_pack_a(
-            a in arb_matrix::<i32>(1..20, 1..20),
-            mr in (1..9usize),
+            a in arb_matrix::<i8>(1..40, 1..40),
+            mr in (1..41usize),
         ) {
-            let a_ = a.clone();
-            let a_ref = a_.to_ref();
+            let a_ref = a.to_ref();
 
-            let arb_rows = (0..a.nrows()).prop_flat_map(|start| {
-                let take = 50;
-                (start..start+take).prop_map(move |end| start..end)
-            }).prop_filter("mc mod mr", |rows| rows.len() % mr == 0);
-            let arb_cols = (0..=a.ncols()).prop_flat_map(move |start| {
-                (start..=a.ncols()).prop_map(move |end| start..end)
-            });
+            const TAKE: usize = 50;
+            let arb_rows = (0..a.nrows())
+                .prop_flat_map(|start| (start..start + TAKE).prop_map(move |end| start..end))
+                .prop_filter("rows", |rows| mr <= rows.len() && rows.len() % mr == 0);
+
+            let arb_cols = (0..=a.ncols())
+                .prop_flat_map(|start| (start..=a.ncols()).prop_map(move |end| start..end));
 
             proptest!(|(rows in arb_rows, cols in arb_cols)| {
                 let mut apack = vec![-1; rows.len() * cols.len()];
@@ -227,5 +247,54 @@ mod proptests {
                 prop_assert_eq!(apack, expect);
             });
         }
+    }
+}
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    #[kani::proof]
+    #[kani::unwind(3)] // 1 + max(kc, number_of_valid_blocks)
+    fn check_pack_a() -> Option<()> {
+        const KC_LIMIT: usize = 2;
+        const NUMBER_OF_VALID_BLOCKS_LIMIT: usize = 2;
+
+        const PACK_LEN_LIMIT: usize = 11;
+        const VALUES_LEN_LIMIT: usize = 13;
+        const MC_LIMIT: usize = 13;
+
+        let values = kani::vec::any_vec::<i8, VALUES_LEN_LIMIT>();
+        let a = {
+            let nrows = kani::any();
+            let ncols = kani::any();
+            let row_stride = kani::any_where(|&row_stride| row_stride > 0);
+            let col_stride = kani::any();
+            MatRef::from_parts(nrows, ncols, &values, row_stride, col_stride)?
+        };
+
+        let mr: usize = kani::any_where(|&mr| mr > 0);
+
+        let rows: Range<usize> = kani::any()..kani::any();
+        let cols: Range<usize> = kani::any()..kani::any();
+
+        let kc = cols.len();
+        let mc = rows.len();
+        kani::assume(kc <= KC_LIMIT);
+        kani::assume(mc <= MC_LIMIT);
+        kani::assume(mr <= mc && mc % mr == 0);
+
+        kani::assume(cols.end <= a.ncols());
+        kani::assume(rows.start < a.nrows());
+
+        let rows_stop_at = a.nrows().min(rows.end);
+        let number_of_valid_blocks = (rows_stop_at - rows.start) / mr;
+        kani::assume(number_of_valid_blocks <= NUMBER_OF_VALID_BLOCKS_LIMIT);
+
+        kani::assume(mc.checked_mul(kc)? <= PACK_LEN_LIMIT);
+        let mut apack = vec![0; mc * kc];
+        pack_a(mr, &mut apack, a, rows, cols);
+
+        Some(())
     }
 }
