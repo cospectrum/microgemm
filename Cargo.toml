@@ -17,11 +17,7 @@ readme = "README.md"
 categories = ["science", "mathematics", "wasm", "no-std", "no-std::no-alloc"]
 keywords = ["gemm", "matrix", "linear-algebra", "math"]
 
-exclude = [
-    ".github/*",
-    "tests/comparison.rs",
-    "Makefile.toml",
-]
+exclude = [".github/*", "tests/comparison.rs", "Makefile.toml"]
 
 [dependencies]
 generic-array = { version = "1.0.0", default-features = false }
@@ -30,7 +26,9 @@ num-traits = { version = "0.2.17", default-features = false }
 [dev-dependencies]
 approx = "0.5.1"
 proptest = "1.5.0"
-allocator-api2 = { version = "0.2.18", features = ["alloc"], default-features = false }
+allocator-api2 = { version = "0.2.18", features = [
+    "alloc",
+], default-features = false }
 criterion = { version = "0.5.1", default-features = false }
 faer-core = { version = "0.16.0", default-features = false }
 matrixmultiply = { version = "0.3.8", default-features = false }
@@ -39,3 +37,6 @@ half = { version = "2", features = ["num-traits"] }
 [[bench]]
 name = "gemm_f32"
 harness = false
+
+[profile.dev]
+opt-level = 1
