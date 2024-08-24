@@ -90,7 +90,7 @@ pub(crate) fn pack_a<T>(
         }
     }
 
-    //#[cfg(not(kani))]
+    #[cfg(not(kani))]
     it.fill(T::zero());
 }
 
