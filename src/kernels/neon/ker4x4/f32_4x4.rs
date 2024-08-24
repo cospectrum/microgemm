@@ -121,3 +121,44 @@ fn neon_4x4_microkernel_f32(
         }
     }
 }
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    const DIM: usize = 4;
+
+    const fn max(a: usize, b: usize) -> usize {
+        if a < b {
+            b
+        } else {
+            a
+        }
+    }
+
+    #[kani::proof]
+    fn check_neon_4x4_microkernel_f32() -> Option<()> {
+        const KC_LIMIT: usize = 8;
+
+        const MAX_VEC_LEN: usize = 3 + max(DIM * KC_LIMIT, DIM * DIM);
+
+        let kc: usize = kani::any_where(|&kc| kc <= KC_LIMIT);
+        let alpha: f32 = kani::any();
+        let beta: f32 = kani::any();
+
+        let left = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        let right = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        kani::assume(left.len() >= DIM * kc);
+        kani::assume(right.len() >= DIM * kc);
+        let left = &left[..DIM * kc];
+        let right = &right[..DIM * kc];
+
+        let mut dst = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        kani::assume(dst.len() >= DIM * DIM);
+        let dst = &mut dst[..DIM * DIM];
+
+        // TODO: simd
+        // neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
+        Some(())
+    }
+}
