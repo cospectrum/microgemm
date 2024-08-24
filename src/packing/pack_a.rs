@@ -61,6 +61,7 @@ pub(crate) fn pack_a<T>(
     }
 
     let remains = (rows_stop_at - rows.start) % mr;
+    debug_assert!(remains < mr);
     if remains > 0 {
         let nblock = number_of_valid_blocks;
         let block_rows = rows_offset + mr * nblock..rows_stop_at;
@@ -89,7 +90,7 @@ pub(crate) fn pack_a<T>(
         }
     }
 
-    #[cfg(not(kani))]
+    //#[cfg(not(kani))]
     it.fill(T::zero());
 }
 
@@ -278,8 +279,8 @@ mod proofs {
         let rows: Range<usize> = kani::any()..kani::any();
         let cols: Range<usize> = kani::any()..kani::any();
 
-        let kc = cols.len();
         let mc = rows.len();
+        let kc = cols.len();
         kani::assume(kc <= KC_LIMIT);
         kani::assume(mc <= MC_LIMIT);
         kani::assume(mr <= mc && mc % mr == 0);
@@ -287,11 +288,13 @@ mod proofs {
         kani::assume(cols.end <= a.ncols());
         kani::assume(rows.start < a.nrows());
 
-        let rows_stop_at = a.nrows().min(rows.end);
-        let number_of_valid_blocks = (rows_stop_at - rows.start) / mr;
+        let number_of_valid_blocks = {
+            let rows_stop_at = a.nrows().min(rows.end);
+            (rows_stop_at - rows.start) / mr
+        };
         kani::assume(number_of_valid_blocks <= NUMBER_OF_VALID_BLOCKS_LIMIT);
 
-        kani::assume(mc.checked_mul(kc)? <= PACK_LEN_LIMIT);
+        kani::assume(mc * kc <= PACK_LEN_LIMIT);
         let mut apack = vec![0; mc * kc];
         pack_a(mr, &mut apack, a, rows, cols);
 

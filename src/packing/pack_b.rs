@@ -51,6 +51,7 @@ pub(crate) fn pack_b<T>(
                 let lane = b.as_slice()[idx..].iter().step_by(stride).take(nr);
                 debug_assert_eq!(lane.len(), nr);
                 let zip = lane.zip(&mut it[..nr]);
+                #[cfg(not(kani))]
                 zip.for_each(|(&src, dst)| {
                     *dst = src;
                 });
@@ -60,14 +61,12 @@ pub(crate) fn pack_b<T>(
     }
 
     let remains = (cols_stop_at - cols.start) % nr;
+    debug_assert!(remains < nr);
     if remains > 0 {
         let nblock = number_of_valid_blocks;
         let block_cols = cols_offset + nr * nblock..cols_stop_at;
         debug_assert!(block_cols.start < block_cols.end);
         debug_assert_eq!(block_cols.len(), remains);
-
-        let tail_len = nr - remains;
-        debug_assert_eq!(block_cols.len() + tail_len, nr);
 
         for row in rows.clone() {
             debug_assert!(row < b.nrows());
@@ -80,20 +79,23 @@ pub(crate) fn pack_b<T>(
                 let lane = b.as_slice()[idx..].iter().step_by(stride).take(remains);
                 debug_assert_eq!(lane.len(), remains);
                 let zip = lane.zip(&mut it[..remains]);
+                #[cfg(not(kani))]
                 zip.for_each(|(&src, dst)| {
                     *dst = src;
                 });
             }
+            #[cfg(not(kani))]
             it[remains..nr].fill(T::zero());
             it = &mut it[nr..];
         }
     }
 
+    #[cfg(not(kani))]
     it.fill(T::zero());
 }
 
 #[cfg(test)]
-mod tests {
+mod reference {
     use super::*;
     use crate::std_prelude::*;
 
@@ -150,7 +152,7 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::{tests::bpack_ref, *};
+    use super::{reference::*, *};
     use crate::utils::arb_matrix;
     use proptest::{prelude::*, proptest};
 
@@ -177,5 +179,56 @@ mod proptests {
                 prop_assert_eq!(bpack, expect);
             });
         }
+    }
+}
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    #[kani::proof]
+    #[kani::unwind(3)] // 1 + max(kc, number_of_valid_blocks)
+    fn check_pack_b() -> Option<()> {
+        const KC_LIMIT: usize = 2;
+        const NUMBER_OF_VALID_BLOCKS_LIMIT: usize = 2;
+
+        const PACK_LEN_LIMIT: usize = 11;
+        const VALUES_LEN_LIMIT: usize = 13;
+        const NC_LIMIT: usize = 13;
+
+        let values = kani::vec::any_vec::<i8, VALUES_LEN_LIMIT>();
+        let b = {
+            let nrows = kani::any();
+            let ncols = kani::any();
+            let row_stride = kani::any();
+            let col_stride = kani::any_where(|&col_stride| col_stride > 0);
+            MatRef::from_parts(nrows, ncols, &values, row_stride, col_stride)?
+        };
+
+        let nr: usize = kani::any_where(|&nr| nr > 0);
+
+        let rows: Range<usize> = kani::any()..kani::any();
+        let cols: Range<usize> = kani::any()..kani::any();
+
+        let kc = rows.len();
+        let nc = cols.len();
+        kani::assume(kc <= KC_LIMIT);
+        kani::assume(nc <= NC_LIMIT);
+        kani::assume(nr <= nc && nc % nr == 0);
+
+        kani::assume(rows.end <= b.nrows());
+        kani::assume(cols.start < b.ncols());
+
+        let number_of_valid_blocks = {
+            let cols_stop_at = cols.end.min(b.ncols());
+            (cols_stop_at - cols.start) / nr
+        };
+        kani::assume(number_of_valid_blocks <= NUMBER_OF_VALID_BLOCKS_LIMIT);
+
+        kani::assume(kc * nc <= PACK_LEN_LIMIT);
+        let mut bpack = vec![0; kc * nc];
+        pack_b(nr, &mut bpack, b, rows, cols);
+
+        Some(())
     }
 }
