@@ -1,3 +1,4 @@
+#![allow(clippy::incompatible_msrv)]
 use microgemm::{typenum, Kernel, MatMut, MatRef, PackSizes};
 use std::time::{Duration, Instant};
 

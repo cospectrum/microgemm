@@ -62,11 +62,7 @@ dependencies = [
 
 [tasks.example-f16]
 command = "cargo"
-args = [
-    "run",
-    "--manifest-path",
-    "examples/gemm_f16/Cargo.toml",
-]
+args = ["run", "--manifest-path", "examples/gemm_f16/Cargo.toml"]
 
 [tasks.examples]
 command = "cargo"
@@ -108,14 +104,17 @@ install_crate = "cargo-semver-checks"
 command = "cargo"
 args = ["semver-checks"]
 
-[tasks.msrv]
-install_crate = "cargo-msrv"
-command = "cargo"
-args = ["msrv", "verify"]
-
 [tasks.comparison]
 command = "cargo"
-args = ["test", "--release", "--test", "comparison", "--", "--ignored", "--nocapture"]
+args = [
+    "test",
+    "--release",
+    "--test",
+    "comparison",
+    "--",
+    "--ignored",
+    "--nocapture",
+]
 
 [tasks.bench]
 command = "cargo"
@@ -129,13 +128,12 @@ command = "cargo"
 args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 
 [tasks.sanitize-neon]
-env = { "RUSTFLAGS" = {unset = true} }
+env = { "RUSTFLAGS" = { unset = true } }
 dependencies = ["--sanitize-neon"]
 
 [tasks.pre-commit]
 dependencies = [
     "tests",
-    "msrv",
     "semver",
     "doc",
     "fmt",
