@@ -40,7 +40,7 @@ fn neon_4x4_microkernel_f32(
     dst_colmajor: &mut [f32],
 ) {
     assert_eq!(lhs.len(), rhs.len());
-    assert_eq!(lhs.len(), 4 * kc);
+    assert_eq!(lhs.len(), 4usize.checked_mul(kc).unwrap());
 
     unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst_colmajor) };
 

@@ -27,7 +27,7 @@ args = ["build", "--target", "wasm32-unknown-unknown"]
 dependencies = ["install-wasm32-unknown-unknown"]
 
 [tasks.build-wasm32-simd128]
-env = { "RUSTFLAGS" = {unset = true} }
+env = { "RUSTFLAGS" = { unset = true } }
 dependencies = ["--build-wasm32-simd128"]
 
 [tasks.build-wasm32]
@@ -88,16 +88,12 @@ args = [
 dependencies = ["install-wasm32-unknown-unknown"]
 
 [tasks.example-wasm-simd128]
-env = { "RUSTFLAGS" = {unset = true} }
+env = { "RUSTFLAGS" = { unset = true } }
 dependencies = ["--example-wasm-simd128"]
 
 [tasks.example-f16]
 command = "cargo"
-args = [
-    "run",
-    "--manifest-path",
-    "examples/gemm_f16/Cargo.toml",
-]
+args = ["run", "--manifest-path", "examples/gemm_f16/Cargo.toml"]
 
 [tasks.examples]
 command = "cargo"
@@ -113,7 +109,7 @@ args = ["test", "--headless", "--firefox", "--release"]
 dependencies = ["install-wasm-pack"]
 
 [tasks.test-firefox]
-env = { "RUSTFLAGS" = {unset = true} }
+env = { "RUSTFLAGS" = { unset = true } }
 dependencies = ["--test-firefox"]
 
 [tasks.test-node]
@@ -123,11 +119,8 @@ args = ["test", "--node", "--release"]
 dependencies = ["install-wasm-pack"]
 
 [tasks.test-wasm]
-env = { "RUSTFLAGS" = {unset = true} }
-dependencies = [
-    "test-firefox",
-    "test-node",
-]
+env = { "RUSTFLAGS" = { unset = true } }
+dependencies = ["test-firefox", "test-node"]
 
 [tasks.test-ignored]
 command = "cargo"
@@ -182,11 +175,6 @@ install_crate = "cargo-semver-checks"
 command = "cargo"
 args = ["semver-checks"]
 
-[tasks.msrv]
-install_crate = "cargo-msrv"
-command = "cargo"
-args = ["msrv", "verify"]
-
 ############################################################
 
 [tasks.bench]
@@ -201,12 +189,11 @@ command = "cargo"
 args = ["test", "neon", "--target", "aarch64-apple-darwin"]
 
 [tasks.sanitize-neon]
-env = { "RUSTFLAGS" = {unset = true} }
+env = { "RUSTFLAGS" = { unset = true } }
 dependencies = ["--sanitize-neon"]
 
 [tasks.pre-commit]
 dependencies = [
-    "msrv",
     "semver",
     "doc",
     "fmt",

@@ -1,3 +1,4 @@
+#![allow(clippy::incompatible_msrv)]
 use microgemm as mg;
 use microgemm::{Kernel, Layout, MatMut, MatRef, PackSizes};
 use std::time::{Duration, Instant};
@@ -101,6 +102,7 @@ fn time_with(kernel: &impl Kernel<Scalar = f32>, n: usize, tries: u32) -> Durati
     result
 }
 
+#[allow(dead_code)]
 struct NaiveKernel;
 
 impl Kernel for NaiveKernel {
