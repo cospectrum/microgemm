@@ -1,10 +1,24 @@
 mod ker4x4;
 mod ker8x8;
-mod simd;
+
+#[cfg(any(kani, miri))]
+mod simd_mock;
+
+mod simd {
+    #[cfg(not(any(kani, miri)))]
+    pub use core::arch::aarch64::{
+        vaddq_f32, vfmaq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
+    };
+    #[cfg(any(kani, miri))]
+    pub use simd_mock::{
+        vaddq_f32, vfmaq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
+    };
+}
 
 pub use ker4x4::NeonKernel4x4;
 pub use ker8x8::NeonKernel8x8;
 
+#[cfg(not(miri))]
 #[cfg(test)]
 mod proptests {
     use super::*;

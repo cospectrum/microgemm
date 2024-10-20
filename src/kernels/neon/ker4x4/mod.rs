@@ -1,6 +1,7 @@
 #[cfg(target_arch = "aarch64")]
 mod f32_4x4;
 
+use super::simd;
 use core::marker::PhantomData;
 
 /// Available only for the `aarch64` target.

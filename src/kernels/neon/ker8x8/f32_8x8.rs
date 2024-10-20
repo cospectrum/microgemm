@@ -1,6 +1,8 @@
 use super::NeonKernel8x8;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U8, Kernel, MatMut, MatRef};
 
+use super::simd::*;
+
 impl Kernel for NeonKernel8x8<f32> {
     type Scalar = f32;
     type Mr = U8;
@@ -52,8 +54,6 @@ fn neon_8x8_microkernel_f32(
     };
 
     unsafe fn inner(kc: usize, alpha: f32, a: *const f32, b: *const f32, beta: f32, c: *mut f32) {
-        use core::arch::aarch64::*;
-
         let (mut a, mut b) = (b, a);
 
         let mut ab11 = [vmovq_n_f32(0f32); 4];

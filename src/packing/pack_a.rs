@@ -219,6 +219,7 @@ mod tests {
     }
 }
 
+#[cfg(not(miri))]
 #[cfg(test)]
 mod proptests {
     use super::{reference::*, *};

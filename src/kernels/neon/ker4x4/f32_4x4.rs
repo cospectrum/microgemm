@@ -1,8 +1,7 @@
 use super::NeonKernel4x4;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
-use core::arch::aarch64::{
-    vaddq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
-};
+
+use super::simd::*;
 
 impl Kernel for NeonKernel4x4<f32> {
     type Scalar = f32;
@@ -139,7 +138,6 @@ mod proofs {
     #[kani::proof]
     fn check_neon_4x4_microkernel_f32() -> Option<()> {
         const KC_LIMIT: usize = 8;
-
         const MAX_VEC_LEN: usize = 3 + max(DIM * KC_LIMIT, DIM * DIM);
 
         let kc: usize = kani::any_where(|&kc| kc <= KC_LIMIT);
@@ -157,8 +155,7 @@ mod proofs {
         kani::assume(dst.len() >= DIM * DIM);
         let dst = &mut dst[..DIM * DIM];
 
-        // TODO: simd
-        // neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
+        neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
         Some(())
     }
 }

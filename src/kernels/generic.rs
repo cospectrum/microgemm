@@ -83,6 +83,7 @@ impl_generic_square_kernel!(GenericKernel8x8, 8, U8);
 impl_generic_square_kernel!(GenericKernel16x16, 16, U16);
 impl_generic_square_kernel!(GenericKernel32x32, 32, U32);
 
+#[cfg(not(miri))]
 #[cfg(test)]
 mod proptests {
     use super::*;
