@@ -72,7 +72,7 @@ jobs:
           locked: true
       - name: cargo miri test
         timeout-minutes: 120
-        run: cargo miri nextest run --no-default-features --features=image/default
+        run: cargo miri nextest run
         env:
           MIRIFLAGS: ""
   kani:
