@@ -114,10 +114,14 @@ fn neon_4x4_microkernel_f32(
                 let mut tmp = [0f32; 4];
                 vst1q_f32(tmp.as_mut_ptr(), from);
                 for (y, x) in to.iter_mut().zip(tmp) {
-                    #[cfg(not(kani))]
+                    #[cfg(kani)]
                     {
-                        *y = x + beta * *y;
+                        const BOUND: f32 = 1e3;
+                        kani::assume(y < BOUND);
+                        kani::assume(x < BOUND);
+                        kani::assume(beta < BOUND);
                     }
+                    *y = x + beta * *y;
                 }
             }
         }
