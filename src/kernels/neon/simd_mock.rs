@@ -1,4 +1,5 @@
 #[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
 pub struct float32x4_t([f32; 4]);
 
 pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
