@@ -57,7 +57,7 @@ pub unsafe fn vfmaq_f32(
 ) -> float32x4_t {
     let mut out = vmovq_n_f32(0f32);
     for i in 0..4 {
-        out.0[i] = c[i] + a[i] * b[i];
+        out.0[i] = a[i] + b[i] * c[i];
     }
     out
 }
