@@ -1,7 +1,7 @@
 use super::NeonKernel8x8;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U8, Kernel, MatMut, MatRef};
 
-use super::simd::*;
+use super::super::simd::*;
 
 impl Kernel for NeonKernel8x8<f32> {
     type Scalar = f32;

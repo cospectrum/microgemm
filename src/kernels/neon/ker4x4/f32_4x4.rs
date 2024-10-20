@@ -1,7 +1,7 @@
 use super::NeonKernel4x4;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
 
-use super::simd::*;
+use super::super::simd::*;
 
 impl Kernel for NeonKernel4x4<f32> {
     type Scalar = f32;

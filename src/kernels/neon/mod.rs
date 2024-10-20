@@ -4,6 +4,7 @@ mod ker8x8;
 #[cfg(any(kani, miri))]
 mod simd_mock;
 
+#[cfg(target_arch = "aarch64")]
 mod simd {
     #[cfg(any(kani, miri))]
     pub use super::simd_mock::{
