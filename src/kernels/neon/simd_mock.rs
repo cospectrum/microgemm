@@ -5,14 +5,6 @@ pub unsafe fn vmovq_n_f32(value: f32) -> float32x4_t {
     float32x4_t([value; 4])
 }
 
-pub unsafe fn vaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
-    let mut out = vmovq_n_f32(0f32);
-    for i in 0..4 {
-        out.0[i] = a.0[i] + b.0[i];
-    }
-    out
-}
-
 pub unsafe fn vld1q_f32(ptr: *const f32) -> float32x4_t {
     let mut out = vmovq_n_f32(0f32);
     for i in 0..4 {
@@ -25,6 +17,22 @@ pub unsafe fn vst1q_f32(ptr: *mut f32, a: float32x4_t) {
     for i in 0..4 {
         *ptr.add(i) = a.0[i];
     }
+}
+
+pub unsafe fn vaddq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
+    let mut out = vmovq_n_f32(0f32);
+    for i in 0..4 {
+        out.0[i] = a.0[i] + b.0[i];
+    }
+    out
+}
+
+pub unsafe fn vmulq_n_f32(a: float32x4_t, b: f32) -> float32x4_t {
+    let mut out = vmovq_n_f32(0f32);
+    for i in 0..4 {
+        out.0[i] = a.0[i] * b;
+    }
+    out
 }
 
 pub unsafe fn vfmaq_laneq_f32<const LANE: i32>(
