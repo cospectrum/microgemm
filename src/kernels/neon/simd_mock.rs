@@ -1,4 +1,4 @@
-const F32_BOUND: f32 = 1e3f32;
+const F32_BOUND: f32 = 1e3;
 
 fn add_f32(a: f32, b: f32) -> f32 {
     #[cfg(kani)]
