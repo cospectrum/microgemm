@@ -106,17 +106,20 @@ fn neon_4x4_microkernel_f32(
 
         let it = dst.chunks_exact_mut(4).zip(cols0);
         if beta == 0f32 {
-            it.for_each(|(to, from)| {
+            for (to, from) in it {
                 vst1q_f32(to.as_mut_ptr(), from);
-            });
+            }
         } else {
-            it.for_each(|(to, from)| {
+            for (to, from) in it {
                 let mut tmp = [0f32; 4];
                 vst1q_f32(tmp.as_mut_ptr(), from);
-                to.iter_mut().zip(tmp).for_each(|(y, x)| {
-                    *y = x + beta * *y;
-                });
-            });
+                for (y, x) in to.iter_mut().zip(tmp) {
+                    #[cfg(not(kani))]
+                    {
+                        *y = x + beta * *y;
+                    }
+                }
+            }
         }
     }
 }
@@ -136,6 +139,7 @@ mod proofs {
     }
 
     #[kani::proof]
+    #[kani::unwind(5)] // 1 + max(4, kc / 4)
     fn check_neon_4x4_microkernel_f32() -> Option<()> {
         const KC_LIMIT: usize = 8;
         const MAX_VEC_LEN: usize = 3 + max(DIM * KC_LIMIT, DIM * DIM);
