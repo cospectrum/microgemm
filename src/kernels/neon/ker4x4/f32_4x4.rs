@@ -117,9 +117,9 @@ fn neon_4x4_microkernel_f32(
                     #[cfg(kani)]
                     {
                         const BOUND: f32 = 1e3;
-                        kani::assume(y < BOUND);
-                        kani::assume(x < BOUND);
-                        kani::assume(beta < BOUND);
+                        kani::assume(y.abs() < BOUND);
+                        kani::assume(x.abs() < BOUND);
+                        kani::assume(beta.abs() < BOUND);
                     }
                     *y = x + beta * *y;
                 }
