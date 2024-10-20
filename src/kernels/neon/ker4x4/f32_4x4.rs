@@ -1,8 +1,7 @@
 use super::NeonKernel4x4;
 use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
-use core::arch::aarch64::{
-    vaddq_f32, vfmaq_laneq_f32, vld1q_f32, vmovq_n_f32, vmulq_n_f32, vst1q_f32,
-};
+
+use super::super::simd::*;
 
 impl Kernel for NeonKernel4x4<f32> {
     type Scalar = f32;
@@ -107,17 +106,64 @@ fn neon_4x4_microkernel_f32(
 
         let it = dst.chunks_exact_mut(4).zip(cols0);
         if beta == 0f32 {
-            it.for_each(|(to, from)| {
+            for (to, from) in it {
                 vst1q_f32(to.as_mut_ptr(), from);
-            });
+            }
         } else {
-            it.for_each(|(to, from)| {
+            for (to, from) in it {
                 let mut tmp = [0f32; 4];
                 vst1q_f32(tmp.as_mut_ptr(), from);
-                to.iter_mut().zip(tmp).for_each(|(y, x)| {
+                for (y, x) in to.iter_mut().zip(tmp) {
+                    #[cfg(kani)]
+                    {
+                        const BOUND: f32 = 1e3;
+                        kani::assume(y.abs() < BOUND);
+                        kani::assume(x.abs() < BOUND);
+                        kani::assume(beta.abs() < BOUND);
+                    }
                     *y = x + beta * *y;
-                });
-            });
+                }
+            }
         }
+    }
+}
+
+#[cfg(kani)]
+mod proofs {
+    use super::*;
+
+    const DIM: usize = 4;
+
+    const fn max(a: usize, b: usize) -> usize {
+        if a < b {
+            b
+        } else {
+            a
+        }
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)] // 1 + max(4, kc / 4)
+    fn check_neon_4x4_microkernel_f32() -> Option<()> {
+        const KC_LIMIT: usize = 8;
+        const MAX_VEC_LEN: usize = 3 + max(DIM * KC_LIMIT, DIM * DIM);
+
+        let kc: usize = kani::any_where(|&kc| kc <= KC_LIMIT);
+        let alpha: f32 = kani::any();
+        let beta: f32 = kani::any();
+
+        let left = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        let right = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        kani::assume(left.len() >= DIM * kc);
+        kani::assume(right.len() >= DIM * kc);
+        let left = &left[..DIM * kc];
+        let right = &right[..DIM * kc];
+
+        let mut dst = kani::vec::any_vec::<f32, MAX_VEC_LEN>();
+        kani::assume(dst.len() >= DIM * DIM);
+        let dst = &mut dst[..DIM * DIM];
+
+        neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
+        Some(())
     }
 }

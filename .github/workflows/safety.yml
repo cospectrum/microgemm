@@ -2,6 +2,7 @@
 # removed. Runs:
 # - address sanitizer - detects memory errors
 # - leak sanitizer - detects memory leaks
+# - miri - detects undefined behavior and memory leaks
 # - kani - verifies code snippets using model checking
 # See check.yml for information about how the concurrency cancellation and workflow triggering works
 permissions:
@@ -51,6 +52,29 @@ jobs:
         env:
           LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
           RUSTFLAGS: "-Z sanitizer=leak"
+  miri:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} / miri
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install nightly
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: miri
+      - name: Install cargo-nextest
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-nextest
+          locked: true
+      - name: cargo miri test
+        timeout-minutes: 120
+        run: cargo miri nextest run
+        env:
+          MIRIFLAGS: ""
   kani:
     runs-on: macos-latest
     steps:
