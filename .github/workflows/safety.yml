@@ -53,17 +53,17 @@ jobs:
           LSAN_OPTIONS: "suppressions=lsan-suppressions.txt"
           RUSTFLAGS: "-Z sanitizer=leak"
   miri:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.os }} / miri
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
-      - run: |
-          echo "NIGHTLY=nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/miri)" >> "$GITHUB_ENV"
-      - name: Install ${{ env.NIGHTLY }}
+      - name: Install nightly
         uses: dtolnay/rust-toolchain@master
         with:
-          toolchain: ${{ env.NIGHTLY }}
+          toolchain: nightly
           components: miri
       - name: Install cargo-nextest
         uses: baptiste0928/cargo-install@v1
