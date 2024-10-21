@@ -30,7 +30,7 @@ fn test_neon4x4() {
 fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
     let a = [1., 2., 3., 4., 5., 6.];
     let b = [10., 11., 20., 21., 30., 31.];
-    let mut c = vec![0f32; 2 * 2];
+    let mut c = vec![-9f32; 2 * 2];
     let a = MatRef::row_major(2, 3, a.as_ref());
     let b = MatRef::row_major(3, 2, b.as_ref());
     let mut c = MatMut::row_major(2, 2, c.as_mut());
