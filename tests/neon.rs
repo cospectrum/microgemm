@@ -28,26 +28,71 @@ fn test_neon4x4() {
 }
 
 fn test_kernel_f32(kernel: impl Kernel<Scalar = f32>) {
-    let a = [1., 2., 3., 4., 5., 6.];
-    let b = [10., 11., 20., 21., 30., 31.];
-    let mut c = vec![0f32; 2 * 2];
-    let a = MatRef::row_major(2, 3, a.as_ref());
-    let b = MatRef::row_major(3, 2, b.as_ref());
-    let mut c = MatMut::row_major(2, 2, c.as_mut());
     let pack_sizes = PackSizes {
         mc: kernel.mr(),
         kc: 2,
         nc: kernel.nr(),
     };
-    let mut packing_buf = vec![0f32; pack_sizes.buf_len()];
-    kernel.gemm(
-        1f32,
-        a,
-        b,
-        0f32,
-        c.as_mut(),
-        pack_sizes,
-        packing_buf.as_mut(),
-    );
-    assert_eq!(c.as_slice(), [140., 146., 320., 335.]);
+
+    let test_cases = vec![
+        TestCase {
+            alpha: 1.,
+            a: MatRef::row_major(2, 3, &[1., 2., 3., 4., 5., 6.]),
+            b: MatRef::row_major(3, 2, &[10., 11., 20., 21., 30., 31.]),
+            c: MatRef::row_major(2, 2, &[99.; 2 * 2]),
+            beta: 0.,
+            expect: &[140., 146., 320., 335.],
+            pack_sizes,
+        },
+        TestCase {
+            alpha: 0.,
+            a: MatRef::row_major(2, 2, &[1., 2., 3., 4.]),
+            b: MatRef::row_major(2, 2, &[5., 6., 3., 4.]),
+            c: MatRef::row_major(2, 2, &[3.; 2 * 2]),
+            beta: 1.,
+            expect: &[3., 3., 3., 3.],
+            pack_sizes,
+        },
+    ];
+
+    for test_case in test_cases {
+        test_case.test_kernel(&kernel);
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct TestCase<'a> {
+    alpha: f32,
+    a: MatRef<'a, f32>,
+    b: MatRef<'a, f32>,
+    beta: f32,
+    c: MatRef<'a, f32>,
+    pack_sizes: PackSizes,
+    expect: &'a [f32],
+}
+
+impl<'a> TestCase<'a> {
+    fn test_kernel(&self, kernel: &impl Kernel<Scalar = f32>) {
+        let param = self;
+        let mut actual = param.c.as_slice().to_vec();
+        let mut actual = MatMut::from_parts(
+            param.c.nrows(),
+            param.c.ncols(),
+            &mut actual,
+            param.c.row_stride(),
+            param.c.col_stride(),
+        )
+        .unwrap();
+        let mut packing_buf = vec![0f32; param.pack_sizes.buf_len()];
+        kernel.gemm(
+            param.alpha,
+            param.a,
+            param.b,
+            param.beta,
+            &mut actual,
+            param.pack_sizes,
+            &mut packing_buf,
+        );
+        assert_eq!(actual.as_slice(), param.expect, "{:?}", self);
+    }
 }
