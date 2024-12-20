@@ -105,24 +105,18 @@ fn neon_4x4_microkernel_f32(
         }
 
         let it = dst.chunks_exact_mut(4).zip(cols0);
-        if beta == 0f32 {
-            for (to, from) in it {
-                vst1q_f32(to.as_mut_ptr(), from);
-            }
-        } else {
-            for (to, from) in it {
-                let mut tmp = [0f32; 4];
-                vst1q_f32(tmp.as_mut_ptr(), from);
-                for (y, x) in to.iter_mut().zip(tmp) {
-                    #[cfg(kani)]
-                    {
-                        const BOUND: f32 = 1e3;
-                        kani::assume(y.abs() < BOUND);
-                        kani::assume(x.abs() < BOUND);
-                        kani::assume(beta.abs() < BOUND);
-                    }
-                    *y = x + beta * *y;
+        for (to, from) in it {
+            let mut tmp = [0f32; 4];
+            vst1q_f32(tmp.as_mut_ptr(), from);
+            for (y, x) in to.iter_mut().zip(tmp) {
+                #[cfg(kani)]
+                {
+                    const BOUND: f32 = 1e3;
+                    kani::assume(y.abs() < BOUND);
+                    kani::assume(x.abs() < BOUND);
+                    kani::assume(beta.abs() < BOUND);
                 }
+                *y = x + beta * *y;
             }
         }
     }

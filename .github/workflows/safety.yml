@@ -79,7 +79,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: 'Checkout'
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'cargo kani'
         timeout-minutes: 220
         uses: model-checking/kani-github-action@v1

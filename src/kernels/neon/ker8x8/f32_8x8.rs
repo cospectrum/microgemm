@@ -100,25 +100,23 @@ fn neon_8x8_microkernel_f32(
             };
         }
 
-        if beta != 0f32 {
-            let mut c11 = [vmovq_n_f32(0f32); 4];
-            let mut c12 = [vmovq_n_f32(0f32); 4];
-            let mut c21 = [vmovq_n_f32(0f32); 4];
-            let mut c22 = [vmovq_n_f32(0f32); 4];
-            for i in 0..4 {
-                c11[i] = vld1q_f32(c![i, 0]);
-                c12[i] = vld1q_f32(c![i, 4]);
-                c21[i] = vld1q_f32(c![i + 4, 0]);
-                c22[i] = vld1q_f32(c![i + 4, 4]);
-            }
+        let mut c11 = [vmovq_n_f32(0f32); 4];
+        let mut c12 = [vmovq_n_f32(0f32); 4];
+        let mut c21 = [vmovq_n_f32(0f32); 4];
+        let mut c22 = [vmovq_n_f32(0f32); 4];
+        for i in 0..4 {
+            c11[i] = vld1q_f32(c![i, 0]);
+            c12[i] = vld1q_f32(c![i, 4]);
+            c21[i] = vld1q_f32(c![i + 4, 0]);
+            c22[i] = vld1q_f32(c![i + 4, 4]);
+        }
 
-            let betav = vmovq_n_f32(beta);
-            for i in 0..4 {
-                ab11[i] = vfmaq_f32(ab11[i], c11[i], betav);
-                ab12[i] = vfmaq_f32(ab12[i], c12[i], betav);
-                ab21[i] = vfmaq_f32(ab21[i], c21[i], betav);
-                ab22[i] = vfmaq_f32(ab22[i], c22[i], betav);
-            }
+        let betav = vmovq_n_f32(beta);
+        for i in 0..4 {
+            ab11[i] = vfmaq_f32(ab11[i], c11[i], betav);
+            ab12[i] = vfmaq_f32(ab12[i], c12[i], betav);
+            ab21[i] = vfmaq_f32(ab21[i], c21[i], betav);
+            ab22[i] = vfmaq_f32(ab22[i], c22[i], betav);
         }
         for i in 0..4 {
             vst1q_f32(c![i, 0], ab11[i]);
