@@ -118,7 +118,7 @@ jobs:
         with:
           toolchain: ${{ matrix.msrv }}
       - name: cargo +${{ matrix.msrv }} check
-        run:
+        run: |
           rustc --version
           cargo check
         env:
