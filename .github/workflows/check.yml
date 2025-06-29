@@ -55,8 +55,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
-      - name: cargo clippy --version
-        run: cargo clippy --version
+      - run: cargo clippy --version
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features
         env:
@@ -117,8 +116,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.msrv }}
-      - name: rustc --version
-        run: rustc --version
+      - run: rustc --version
       - name: cargo +${{ matrix.msrv }} check
         run: cargo check
         env:
