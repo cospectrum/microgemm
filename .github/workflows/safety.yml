@@ -84,4 +84,5 @@ jobs:
         timeout-minutes: 220
         uses: model-checking/kani-github-action@v1
         with:
-          kani-version: '0.54.0'
+          kani-version: '0.63.0'
+          args: --fail-fast
