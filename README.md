@@ -1,15 +1,21 @@
 <img align="middle" src="./assets/logo.png" width="240px" alt="αAB + βC">
 
 # microgemm
-[![github]](https://github.com/cospectrum/microgemm)
-[![latest_version]][crates.io]
-[![docs.rs]](https://docs.rs/microgemm)
+[![github_logo]](https://github.com/cospectrum/microgemm)
+[![latest_version_logo]][crates.io]
+[![docs.rs_logo]](https://docs.rs/microgemm)
 [![dependency status](https://deps.rs/repo/github/cospectrum/microgemm/status.svg)](https://deps.rs/repo/github/cospectrum/microgemm)
 
-[github]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
-[latest_version]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
+[github_logo]: https://img.shields.io/badge/github-cospectrum/microgemm-8da0cb?logo=github
+[latest_version_logo]: https://img.shields.io/crates/v/microgemm.svg?logo=rust
 [crates.io]: https://crates.io/crates/microgemm
-[docs.rs]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
+[docs.rs]: https://docs.rs/microgemm
+[docs.rs_logo]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
+
+> ⚠️ **Note:**
+> This README describes the latest changes in the `master` branch, which may not yet be available in the version published on [crates.io][crates.io].
+>
+> For documentation matching the latest published version, see [crates.io][crates.io] or [docs.rs][docs.rs].
 
 General matrix multiplication with custom configuration in Rust. <br>
 Supports `no_std` and `no_alloc` environments.
