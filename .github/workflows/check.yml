@@ -55,7 +55,7 @@ jobs:
         with:
           toolchain: ${{ matrix.toolchain }}
           components: clippy
-      - name: cargo --version
+      - name: cargo clippy --version
         run: cargo clippy --version
       - name: cargo clippy
         run: cargo clippy --all-targets --all-features
