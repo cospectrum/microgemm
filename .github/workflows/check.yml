@@ -117,10 +117,10 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.msrv }}
+      - name: rustc --version
+        run: rustc --version
       - name: cargo +${{ matrix.msrv }} check
-        run: |
-          rustc --version
-          cargo check
+        run: cargo check
         env:
           RUSTFLAGS: -D warnings
   semver:
