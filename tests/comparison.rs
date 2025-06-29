@@ -25,7 +25,7 @@ fn bench_aarch64_f32() {
         let t_neon = display_duration(time_with(&neon_kernel, n, TRIES));
         let t_faer = display_duration(time_with(&faer_kernel, n, TRIES));
         let t_mt = display_duration(time_with(&mt_kernel, n, TRIES));
-        println!("{0:>4} {1:>14} {2:>14} {3:>14}", n, t_neon, t_faer, t_mt);
+        println!("{n:>4} {t_neon:>14} {t_faer:>14} {t_mt:>14}");
     }
 }
 
@@ -49,7 +49,7 @@ fn display_duration(t: Duration) -> String {
             format!("{}.{}{}", num.trunc(), fract, unit)
         }
     };
-    let s = format!("{:?}", t);
+    let s = format!("{t:?}");
 
     if s.contains("ms") {
         pretty(s, "ms")

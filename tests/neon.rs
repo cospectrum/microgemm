@@ -93,6 +93,6 @@ impl<'a> TestCase<'a> {
             param.pack_sizes,
             &mut packing_buf,
         );
-        assert_eq!(actual.as_slice(), param.expect, "{:?}", self);
+        assert_eq!(actual.as_slice(), param.expect, "{self:?}");
     }
 }

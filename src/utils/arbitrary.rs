@@ -11,7 +11,7 @@ use proptest::sample::SizeRange;
 type Mat<T> = MatBase<Vec<T>, T>;
 
 impl<T> Mat<T> {
-    pub fn to_ref(&self) -> MatRef<T> {
+    pub fn to_ref<'a>(&'a self) -> MatRef<'a, T> {
         MatRef::from_parts(
             self.nrows(),
             self.ncols(),
