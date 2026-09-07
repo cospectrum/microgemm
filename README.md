@@ -12,11 +12,6 @@
 [docs.rs]: https://docs.rs/microgemm
 [docs.rs_logo]: https://img.shields.io/badge/docs.rs-microgemm-66c2a5?logo=docs.rs
 
-> ⚠️ **Note:**
-> This README describes the latest changes in the `master` branch, which may not yet be available in the version published on [crates.io][crates.io].
->
-> For documentation matching the latest published version, see [crates.io][crates.io] or [docs.rs][docs.rs].
-
 General matrix multiplication with custom configuration in Rust. <br>
 Supports `no_std` and `no_alloc` environments.
 
