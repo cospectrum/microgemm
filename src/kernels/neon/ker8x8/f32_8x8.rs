@@ -18,14 +18,13 @@ impl Kernel for NeonKernel8x8<f32> {
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
         let kc = lhs.ncols();
-        neon_8x8_microkernel_f32(
-            kc,
-            alpha,
-            lhs.as_slice(),
-            rhs.as_slice(),
-            beta,
-            dst.as_mut_slice(),
-        );
+        // For row-major C, compute the transposed product with the same loop.
+        let (lhs, rhs, ld) = if dst.row_stride() == 1 {
+            (lhs.as_slice(), rhs.as_slice(), dst.col_stride())
+        } else {
+            (rhs.as_slice(), lhs.as_slice(), dst.row_stride())
+        };
+        neon_8x8_microkernel_f32(kc, alpha, lhs, rhs, beta, dst.as_mut_slice(), ld);
     }
 }
 
@@ -36,11 +35,15 @@ fn neon_8x8_microkernel_f32(
     rhs: &[f32],
     beta: f32,
     dst_colmajor: &mut [f32],
+    ld: usize,
 ) {
     const DIM: usize = 8;
     assert_eq!(lhs.len(), rhs.len());
     assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
-    assert_eq!(dst_colmajor.len(), DIM * DIM);
+    assert!(ld >= DIM);
+    assert!(dst_colmajor.len() >= (DIM - 1).checked_mul(ld).unwrap().checked_add(DIM).unwrap());
+
+    // The checked slice lengths above cover every packed load and strided C access.
 
     unsafe {
         inner(
@@ -50,10 +53,19 @@ fn neon_8x8_microkernel_f32(
             rhs.as_ptr(),
             beta,
             dst_colmajor.as_mut_ptr(),
+            ld,
         )
     };
 
-    unsafe fn inner(kc: usize, alpha: f32, a: *const f32, b: *const f32, beta: f32, c: *mut f32) {
+    unsafe fn inner(
+        kc: usize,
+        alpha: f32,
+        a: *const f32,
+        b: *const f32,
+        beta: f32,
+        c: *mut f32,
+        ld: usize,
+    ) {
         let (mut a, mut b) = (b, a);
 
         let mut ab11 = [vmovq_n_f32(0f32); 4];
@@ -96,7 +108,7 @@ fn neon_8x8_microkernel_f32(
 
         macro_rules! c {
             ($i:expr, $j:expr) => {
-                c.add(8 * $i + $j)
+                c.add(ld * $i + $j)
             };
         }
 

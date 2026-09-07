@@ -18,14 +18,13 @@ impl Kernel for NeonKernel4x4<f32> {
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
         let kc = lhs.ncols();
-        neon_4x4_microkernel_f32(
-            kc,
-            alpha,
-            lhs.as_slice(),
-            rhs.as_slice(),
-            beta,
-            dst.as_mut_slice(),
-        );
+        // For row-major C, compute the transposed product with the same loop.
+        let (lhs, rhs, ld) = if dst.row_stride() == 1 {
+            (lhs.as_slice(), rhs.as_slice(), dst.col_stride())
+        } else {
+            (rhs.as_slice(), lhs.as_slice(), dst.row_stride())
+        };
+        neon_4x4_microkernel_f32(kc, alpha, lhs, rhs, beta, dst.as_mut_slice(), ld);
     }
 }
 
@@ -36,13 +35,27 @@ fn neon_4x4_microkernel_f32(
     rhs: &[f32],
     beta: f32,
     dst_colmajor: &mut [f32],
+    ld: usize,
 ) {
     const DIM: usize = 4;
     assert_eq!(lhs.len(), rhs.len());
     assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
-    assert_eq!(dst_colmajor.len(), DIM * DIM);
+    assert!(ld >= DIM);
+    assert!(dst_colmajor.len() >= (DIM - 1).checked_mul(ld).unwrap().checked_add(DIM).unwrap());
 
-    unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst_colmajor) };
+    // The checked slice lengths above cover every packed load and strided C access.
+
+    unsafe {
+        inner(
+            kc,
+            alpha,
+            lhs.as_ptr(),
+            rhs.as_ptr(),
+            beta,
+            dst_colmajor,
+            ld,
+        )
+    };
 
     unsafe fn inner(
         kc: usize,
@@ -51,6 +64,7 @@ fn neon_4x4_microkernel_f32(
         mut right: *const f32,
         beta: f32,
         dst: &mut [f32],
+        ld: usize,
     ) {
         let mut cols0 = [vmovq_n_f32(0f32); 4];
         let mut cols1 = [vmovq_n_f32(0f32); 4];
@@ -104,7 +118,7 @@ fn neon_4x4_microkernel_f32(
             cols0[row] = vmulq_n_f32(sum, alpha);
         }
 
-        let it = dst.chunks_exact_mut(4).zip(cols0);
+        let it = dst.chunks_mut(ld).zip(cols0);
         for (to, from) in it {
             let mut tmp = [0f32; 4];
             vst1q_f32(tmp.as_mut_ptr(), from);
@@ -157,7 +171,7 @@ mod proofs {
         kani::assume(dst.len() >= DIM * DIM);
         let dst = &mut dst[..DIM * DIM];
 
-        neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
+        neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst, DIM);
         Some(())
     }
 }

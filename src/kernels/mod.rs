@@ -20,7 +20,7 @@ where
     debug_assert_eq!(rhs.col_stride(), 1);
     debug_assert_eq!(rhs.ncols(), K::NR);
 
-    debug_assert_eq!(dst.row_stride(), 1);
+    debug_assert!(dst.row_stride() == 1 || dst.col_stride() == 1);
     debug_assert_eq!(dst.nrows(), K::MR);
     debug_assert_eq!(dst.ncols(), K::NR);
 

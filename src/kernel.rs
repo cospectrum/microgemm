@@ -20,6 +20,9 @@ where
     const MR: usize = Self::Mr::USIZE;
     const NR: usize = Self::Nr::USIZE;
 
+    /// Computes a full tile with packed column-major `lhs` and row-major `rhs`.
+    /// `dst` has a unit row or column stride and nonoverlapping elements;
+    /// implementations must respect its strides and leave padding untouched.
     fn microkernel(
         &self,
         alpha: Self::Scalar,
