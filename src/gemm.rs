@@ -6,7 +6,7 @@ use num_traits::{One, Zero};
 
 type Product<L, R> = <L as Multiply<R>>::Output;
 
-// The default per-tile operation: stage the c tile through dst_buf around `Kernel::microkernel`.
+// Stage edge tiles through dst_buf so the microkernel receives a complete tile.
 #[allow(clippy::too_many_arguments)]
 #[inline(never)]
 pub(crate) fn buffered_tile<T, K>(
@@ -32,8 +32,8 @@ pub(crate) fn buffered_tile<T, K>(
     crate::packing::registers_to_c(&*dst_buf, c, dst_rows, dst_cols);
 }
 
-// A full tile with a contiguous axis can update C directly. Other layouts and
-// edge tiles retain the buffered path.
+// Full tiles update C through its original strides. Edge tiles retain the
+// buffered path so kernels always receive their complete MR-by-NR tile.
 #[allow(clippy::too_many_arguments)]
 #[inline]
 pub(crate) fn direct_tile<T, K>(
@@ -56,7 +56,6 @@ pub(crate) fn direct_tile<T, K>(
         && dst_cols.len() == K::NR
         && dst_rows.end <= c.nrows()
         && dst_cols.end <= c.ncols()
-        && ((csc == 1 && rsc >= K::NR) || (rsc == 1 && csc >= K::MR))
     {
         let lhs = MatRef::col_major(K::MR, kc, lhs_values);
         let rhs = MatRef::row_major(kc, K::NR, rhs_values);
@@ -347,28 +346,49 @@ mod tests {
                 beta: i32,
                 dst: &mut MatMut<i32>,
             ) {
-                self.0.set((dst.row_stride(), dst.col_stride()) != (1, 4));
-                assert_eq!((dst.nrows(), dst.ncols()), (4, 5));
+                self.0
+                    .set((dst.row_stride(), dst.col_stride()) != (1, Self::MR));
+                assert_eq!((dst.nrows(), dst.ncols()), (Self::MR, Self::NR));
                 assert_eq!(lhs.as_slice(), &[1, 2, 3, 4, -1, 2, -3, 4]);
                 assert_eq!(rhs.as_slice(), &[2, 3, 5, 7, 11, -2, 3, -5, 7, -11]);
-                naive_gemm(alpha, lhs, rhs, beta, dst);
+                // Honor the public contract even when coordinates overlap:
+                // snapshot C, then scatter in column-major order.
+                let mut values = [0; Self::MR * Self::NR];
+                for j in 0..Self::NR {
+                    for i in 0..Self::MR {
+                        let dot = lhs.get(i, 0) * rhs.get(0, j) + lhs.get(i, 1) * rhs.get(1, j);
+                        values[j * Self::MR + i] = alpha * dot + beta * dst.get(i, j);
+                    }
+                }
+                for j in 0..Self::NR {
+                    for i in 0..Self::MR {
+                        *dst.get_mut(i, j) = values[j * Self::MR + i];
+                    }
+                }
             }
         }
 
+        const MR: usize = StridedKernel::MR;
+        const NR: usize = StridedKernel::NR;
         let lhs = [1, 2, 3, 4, -1, 2, -3, 4];
         let rhs = [2, 3, 5, 7, 11, -2, 3, -5, 7, -11];
         for (rows, rs, cs, direct) in [
-            (6, 9, 1, true),
-            (6, 1, 8, true),
-            (6, 2, 14, false),
-            (6, 1, 2, false),
-            (4, 9, 1, false),
+            (MR + 2, 9, 1, true),
+            (MR + 2, 1, 8, true),
+            (MR + 2, 2, 14, true),
+            (MR + 2, 14, 2, true),
+            (MR + 2, 1, 2, true),
+            (MR + 2, 2, 2, true),
+            (MR + 2, 0, 1, true),
+            (MR + 2, 1, 0, true),
+            (MR + 2, 0, 0, true),
+            (MR, 9, 1, false),
         ] {
-            let len = (rows - 1) * rs + 6 * cs + 3;
+            let len = (rows - 1) * rs + (NR + 1) * cs + 3;
             let mut actual: Vec<i32> = (0..len).map(|i| (i % 11) as i32 - 5).collect();
             let mut expected = actual.clone();
             let kernel = StridedKernel(Cell::new(false));
-            let mut scratch = [777; 20];
+            let mut scratch = [777; MR * NR];
             buffered_tile(
                 &TestKernel,
                 2,
@@ -376,10 +396,10 @@ mod tests {
                 &rhs,
                 2,
                 -3,
-                &mut MatMut::from_parts(rows, 7, &mut expected[1..len - 1], rs, cs).unwrap(),
-                1..5,
-                1..6,
-                &mut [0; 20],
+                &mut MatMut::from_parts(rows, NR + 2, &mut expected[1..len - 1], rs, cs).unwrap(),
+                1..1 + MR,
+                1..1 + NR,
+                &mut [0; MR * NR],
             );
             direct_tile(
                 &kernel,
@@ -388,15 +408,15 @@ mod tests {
                 &rhs,
                 2,
                 -3,
-                &mut MatMut::from_parts(rows, 7, &mut actual[1..len - 1], rs, cs).unwrap(),
-                1..5,
-                1..6,
+                &mut MatMut::from_parts(rows, NR + 2, &mut actual[1..len - 1], rs, cs).unwrap(),
+                1..1 + MR,
+                1..1 + NR,
                 &mut scratch,
             );
             assert_eq!(kernel.0.get(), direct);
             assert_eq!(actual, expected, "rows={rows}, strides=({rs}, {cs})");
             if direct {
-                assert_eq!(scratch, [777; 20]);
+                assert_eq!(scratch, [777; MR * NR]);
             }
         }
     }

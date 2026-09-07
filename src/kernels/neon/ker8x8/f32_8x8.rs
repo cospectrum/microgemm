@@ -357,8 +357,8 @@ mod tests {
         );
     }
 
-    // The direct path must actually be taken, not merely agree with the buffered one:
-    // it never touches dst_buf, while the fallback fills dst_buf from c.
+    // Full tiles must bypass the shared scratch buffer, even if the kernel
+    // itself needs temporary storage for an unsupported output layout.
     #[test]
     fn test_tile_takes_direct_path() {
         let kernel = if cfg!(target_feature = "neon") {
@@ -394,7 +394,12 @@ mod tests {
 
         assert!(run(DIM, 1), "row-major c must take the direct path");
         assert!(run(1, DIM), "col-major c must take the direct path");
-        assert!(!run(1, 4), "aliasing strides must take the buffered path");
+        assert!(run(1, 4), "full aliasing tiles bypass shared buffering");
+        assert!(
+            run(2, 2 * DIM + 1),
+            "full nonunit tiles bypass shared buffering"
+        );
+        assert!(run(0, 0), "full broadcast tiles bypass shared buffering");
     }
 }
 
