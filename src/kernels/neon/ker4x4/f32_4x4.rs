@@ -18,24 +18,7 @@ impl Kernel for NeonKernel4x4<f32> {
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
         let kc = lhs.ncols();
-        // For row-major C, compute the transposed product with the same loop.
-        let (lhs, rhs, rs, cs) = if dst.col_stride() == 1 {
-            (
-                rhs.as_slice(),
-                lhs.as_slice(),
-                dst.col_stride(),
-                dst.row_stride(),
-            )
-        } else {
-            (
-                lhs.as_slice(),
-                rhs.as_slice(),
-                dst.row_stride(),
-                dst.col_stride(),
-            )
-        };
-        let mut dst = MatMut::from_parts(4, 4, dst.as_mut_slice(), rs, cs).unwrap();
-        neon_4x4_microkernel_f32(kc, alpha, lhs, rhs, beta, &mut dst);
+        neon_4x4_microkernel_f32(kc, alpha, lhs.as_slice(), rhs.as_slice(), beta, dst);
     }
 }
 

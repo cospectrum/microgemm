@@ -136,7 +136,7 @@ where
     }
     /// # Safety
     /// `(row, col)` must be within the matrix dimensions.
-    #[cfg(target_arch = "aarch64")]
+    #[allow(dead_code)]
     #[inline]
     pub(crate) unsafe fn get_unchecked(&self, row: usize, col: usize) -> T {
         *self.as_slice().get_unchecked(self.idx(row, col))
