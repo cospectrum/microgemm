@@ -19,51 +19,6 @@ mod simd {
 pub use ker4x4::NeonKernel4x4;
 pub use ker8x8::NeonKernel8x8;
 
-// Full square tiles with a contiguous axis can update C in place.
-#[allow(clippy::too_many_arguments)]
-#[inline]
-fn direct_tile<K, F>(
-    kernel: &K,
-    alpha: f32,
-    lhs_values: &[f32],
-    rhs_values: &[f32],
-    kc: usize,
-    beta: f32,
-    c: &mut crate::MatMut<f32>,
-    dst_rows: core::ops::Range<usize>,
-    dst_cols: core::ops::Range<usize>,
-    dst_buf: &mut [f32],
-    kernel_direct: F,
-) where
-    K: crate::Kernel<Scalar = f32>,
-    F: Fn(usize, f32, &[f32], &[f32], f32, &mut [f32], usize),
-{
-    let dim = K::MR;
-    debug_assert_eq!(K::NR, dim);
-    let (rsc, csc) = (c.row_stride(), c.col_stride());
-    if dst_rows.len() == dim
-        && dst_cols.len() == dim
-        && dst_rows.end <= c.nrows()
-        && dst_cols.end <= c.ncols()
-        && ((csc == 1 && rsc >= dim) || (rsc == 1 && csc >= dim))
-    {
-        let at = c.idx(dst_rows.start, dst_cols.start);
-        let ld = if csc == 1 { rsc } else { csc };
-        // Row-major C uses rows of accumulators; column-major C uses columns.
-        // Swapping the product operands can change which NaN payload survives.
-        let (x, y) = if csc == 1 {
-            (lhs_values, rhs_values)
-        } else {
-            (rhs_values, lhs_values)
-        };
-        kernel_direct(kc, alpha, x, y, beta, &mut c.as_mut_slice()[at..], ld);
-        return;
-    }
-    crate::gemm::buffered_tile(
-        kernel, alpha, lhs_values, rhs_values, kc, beta, c, dst_rows, dst_cols, dst_buf,
-    );
-}
-
 #[cfg(not(miri))]
 #[cfg(test)]
 mod proptests {

@@ -97,7 +97,7 @@ impl<'a> TestCase<'a> {
     }
 }
 
-// Forward only microkernel so the default GEMM always stages C through scratch.
+// Force packed output to compare direct GEMM against copy-in/out.
 struct BufferedKernel<K>(K);
 
 impl<K: Kernel<Scalar = f32>> Kernel for BufferedKernel<K> {
@@ -113,7 +113,24 @@ impl<K: Kernel<Scalar = f32>> Kernel for BufferedKernel<K> {
         beta: f32,
         dst: &mut MatMut<f32>,
     ) {
-        self.0.microkernel(alpha, lhs, rhs, beta, dst);
+        let mut values = vec![0.0; Self::MR * Self::NR];
+        for j in 0..Self::NR {
+            for i in 0..Self::MR {
+                values[j * Self::MR + i] = dst.get(i, j);
+            }
+        }
+        self.0.microkernel(
+            alpha,
+            lhs,
+            rhs,
+            beta,
+            &mut MatMut::col_major(Self::MR, Self::NR, &mut values),
+        );
+        for j in 0..Self::NR {
+            for i in 0..Self::MR {
+                *dst.get_mut(i, j) = values[j * Self::MR + i];
+            }
+        }
     }
 }
 

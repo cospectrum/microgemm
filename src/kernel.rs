@@ -20,6 +20,12 @@ where
     const MR: usize = Self::Mr::USIZE;
     const NR: usize = Self::Nr::USIZE;
 
+    /// Computes `dst = alpha * lhs * rhs + beta * dst` for one MR-by-NR tile.
+    /// Inputs are packed: `lhs` is column-major and `rhs` is row-major.
+    /// Output may have arbitrary row and column strides; implementations must
+    /// access it through those strides and preserve padding outside the tile.
+    /// If output coordinates overlap, use the original destination values for
+    /// the computation, then store column by column (rows within each column).
     fn microkernel(
         &self,
         alpha: Self::Scalar,

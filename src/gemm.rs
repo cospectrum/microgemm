@@ -6,37 +6,9 @@ use num_traits::{One, Zero};
 
 type Product<L, R> = <L as Multiply<R>>::Output;
 
-#[allow(clippy::too_many_arguments)]
-#[inline]
-pub(crate) fn gemm_with_kernel<T, K>(
-    kernel: &K,
-    alpha: T,
-    a: MatRef<T>,
-    b: MatRef<T>,
-    beta: T,
-    c: &mut MatMut<T>,
-    pack_sizes: PackSizes,
-    packing_buf: &mut [T],
-) where
-    T: Copy + Zero + One,
-    K: Kernel<Scalar = T> + ?Sized,
-{
-    gemm_with_tile(
-        kernel,
-        alpha,
-        a,
-        b,
-        beta,
-        c,
-        pack_sizes,
-        packing_buf,
-        buffered_tile,
-    );
-}
-
 // The default per-tile operation: stage the c tile through dst_buf around `Kernel::microkernel`.
 #[allow(clippy::too_many_arguments)]
-#[inline]
+#[inline(never)]
 pub(crate) fn buffered_tile<T, K>(
     kernel: &K,
     alpha: T,
@@ -60,10 +32,48 @@ pub(crate) fn buffered_tile<T, K>(
     crate::packing::registers_to_c(&*dst_buf, c, dst_rows, dst_cols);
 }
 
-// Same loop nest as `gemm_with_kernel`, with the per-tile operation left open.
+// A full tile with a contiguous axis can update C directly. Other layouts and
+// edge tiles retain the buffered path.
 #[allow(clippy::too_many_arguments)]
 #[inline]
-pub(crate) fn gemm_with_tile<T, K, F>(
+pub(crate) fn direct_tile<T, K>(
+    kernel: &K,
+    alpha: T,
+    lhs_values: &[T],
+    rhs_values: &[T],
+    kc: usize,
+    beta: T,
+    c: &mut MatMut<T>,
+    dst_rows: Range<usize>,
+    dst_cols: Range<usize>,
+    dst_buf: &mut [T],
+) where
+    T: Copy + Zero + One,
+    K: Kernel<Scalar = T> + ?Sized,
+{
+    let (rsc, csc) = (c.row_stride(), c.col_stride());
+    if dst_rows.len() == K::MR
+        && dst_cols.len() == K::NR
+        && dst_rows.end <= c.nrows()
+        && dst_cols.end <= c.ncols()
+        && ((csc == 1 && rsc >= K::NR) || (rsc == 1 && csc >= K::MR))
+    {
+        let lhs = MatRef::col_major(K::MR, kc, lhs_values);
+        let rhs = MatRef::row_major(kc, K::NR, rhs_values);
+        let at = c.idx(dst_rows.start, dst_cols.start);
+        let mut dst = MatMut::from_parts(K::MR, K::NR, &mut c.as_mut_slice()[at..], rsc, csc)
+            .expect("C tile must fit within its storage");
+        kernel.microkernel(alpha, lhs, rhs, beta, &mut dst);
+        return;
+    }
+    buffered_tile(
+        kernel, alpha, lhs_values, rhs_values, kc, beta, c, dst_rows, dst_cols, dst_buf,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+#[inline(never)]
+pub(crate) fn gemm_with_kernel<T, K>(
     kernel: &K,
     alpha: T,
     a: MatRef<T>,
@@ -72,11 +82,9 @@ pub(crate) fn gemm_with_tile<T, K, F>(
     c: &mut MatMut<T>,
     pack_sizes: PackSizes,
     packing_buf: &mut [T],
-    tile: F,
 ) where
     T: Copy + Zero + One,
     K: Kernel<Scalar = T> + ?Sized,
-    F: Fn(&K, T, &[T], &[T], usize, T, &mut MatMut<T>, Range<usize>, Range<usize>, &mut [T]),
 {
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
@@ -143,7 +151,7 @@ pub(crate) fn gemm_with_tile<T, K, F>(
                         let lhs_values = &apack[lsize * l1..lsize * (l1 + 1)];
 
                         let dst_rows = ic + ir..ic + ir + mr;
-                        tile(
+                        direct_tile(
                             kernel,
                             alpha,
                             lhs_values,
@@ -192,7 +200,6 @@ mod tests {
             assert_eq!(rhs.col_stride(), 1);
             assert_eq!(rhs.ncols(), Self::NR);
 
-            assert_eq!(dst.row_stride(), 1);
             assert_eq!(dst.nrows(), Self::MR);
             assert_eq!(dst.ncols(), Self::NR);
             naive_gemm(alpha, lhs, rhs, beta, dst);
@@ -320,5 +327,77 @@ mod tests {
         kernel.gemm(alpha, a, b, beta, c.as_mut(), pack_sizes, &mut buf);
         naive_gemm(alpha, a, b, beta, expect.as_mut());
         assert_eq!(expect.as_slice(), c.as_slice());
+    }
+
+    #[test]
+    fn direct_rectangular_tiles_preserve_layout_and_fallbacks() {
+        use core::cell::Cell;
+
+        struct StridedKernel(Cell<bool>);
+        impl Kernel for StridedKernel {
+            type Scalar = i32;
+            type Mr = U4;
+            type Nr = U5;
+
+            fn microkernel(
+                &self,
+                alpha: i32,
+                lhs: MatRef<i32>,
+                rhs: MatRef<i32>,
+                beta: i32,
+                dst: &mut MatMut<i32>,
+            ) {
+                self.0.set((dst.row_stride(), dst.col_stride()) != (1, 4));
+                assert_eq!((dst.nrows(), dst.ncols()), (4, 5));
+                assert_eq!(lhs.as_slice(), &[1, 2, 3, 4, -1, 2, -3, 4]);
+                assert_eq!(rhs.as_slice(), &[2, 3, 5, 7, 11, -2, 3, -5, 7, -11]);
+                naive_gemm(alpha, lhs, rhs, beta, dst);
+            }
+        }
+
+        let lhs = [1, 2, 3, 4, -1, 2, -3, 4];
+        let rhs = [2, 3, 5, 7, 11, -2, 3, -5, 7, -11];
+        for (rows, rs, cs, direct) in [
+            (6, 9, 1, true),
+            (6, 1, 8, true),
+            (6, 2, 14, false),
+            (6, 1, 2, false),
+            (4, 9, 1, false),
+        ] {
+            let len = (rows - 1) * rs + 6 * cs + 3;
+            let mut actual: Vec<i32> = (0..len).map(|i| (i % 11) as i32 - 5).collect();
+            let mut expected = actual.clone();
+            let kernel = StridedKernel(Cell::new(false));
+            let mut scratch = [777; 20];
+            buffered_tile(
+                &TestKernel,
+                2,
+                &lhs,
+                &rhs,
+                2,
+                -3,
+                &mut MatMut::from_parts(rows, 7, &mut expected[1..len - 1], rs, cs).unwrap(),
+                1..5,
+                1..6,
+                &mut [0; 20],
+            );
+            direct_tile(
+                &kernel,
+                2,
+                &lhs,
+                &rhs,
+                2,
+                -3,
+                &mut MatMut::from_parts(rows, 7, &mut actual[1..len - 1], rs, cs).unwrap(),
+                1..5,
+                1..6,
+                &mut scratch,
+            );
+            assert_eq!(kernel.0.get(), direct);
+            assert_eq!(actual, expected, "rows={rows}, strides=({rs}, {cs})");
+            if direct {
+                assert_eq!(scratch, [777; 20]);
+            }
+        }
     }
 }

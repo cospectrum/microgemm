@@ -4,7 +4,8 @@ use num_traits::Zero;
 
 // Pack the submatrix a[rows, cols] into (mc/mr) col-major blocks of size mr x kc.
 // Values outsize of `a` will be zeroed.
-#[inline]
+// Specialize lane copies for the calling kernel's fixed tile width.
+#[inline(always)]
 pub(crate) fn pack_a<T>(
     mr: usize,
     apack: &mut [T],

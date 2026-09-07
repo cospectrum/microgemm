@@ -1,7 +1,5 @@
 use super::NeonKernel4x4;
-use crate::{
-    kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef, PackSizes,
-};
+use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
 
 use super::super::simd::*;
 
@@ -10,6 +8,7 @@ impl Kernel for NeonKernel4x4<f32> {
     type Mr = U4;
     type Nr = U4;
 
+    #[inline(always)]
     fn microkernel(
         &self,
         alpha: f32,
@@ -19,90 +18,77 @@ impl Kernel for NeonKernel4x4<f32> {
         dst: &mut MatMut<f32>,
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
+        const DIM: usize = 4;
         let kc = lhs.ncols();
-        neon_4x4_microkernel_f32(
-            kc,
-            alpha,
-            lhs.as_slice(),
-            rhs.as_slice(),
-            beta,
-            dst.as_mut_slice(),
-        );
-    }
-
-    fn gemm(
-        &self,
-        alpha: f32,
-        a: MatRef<f32>,
-        b: MatRef<f32>,
-        beta: f32,
-        c: &mut MatMut<f32>,
-        pack_sizes: PackSizes,
-        packing_buf: &mut [f32],
-    ) {
-        crate::gemm::gemm_with_tile(
-            self,
-            alpha,
-            a,
-            b,
-            beta,
-            c,
-            pack_sizes,
-            packing_buf,
-            neon_4x4_tile_f32,
-        );
+        let (rsc, csc) = (dst.row_stride(), dst.col_stride());
+        if (csc == 1 && rsc >= DIM) || (rsc == 1 && csc >= DIM) {
+            kernel_direct(
+                kc,
+                alpha,
+                lhs.as_slice(),
+                rhs.as_slice(),
+                beta,
+                dst.as_mut_slice(),
+                rsc,
+                csc,
+            );
+        } else {
+            buffered_microkernel(kc, alpha, lhs, rhs, beta, dst);
+        }
     }
 }
 
-// Per-tile operation for the 4x4 f32 kernel: write a full in-bounds tile straight into c,
-// fall back to the buffered path otherwise.
-#[allow(clippy::too_many_arguments)]
-fn neon_4x4_tile_f32(
-    kernel: &NeonKernel4x4<f32>,
-    alpha: f32,
-    lhs_values: &[f32],
-    rhs_values: &[f32],
+// Keep scratch storage for uncommon output layouts off the direct-write path.
+#[cold]
+#[inline(never)]
+fn buffered_microkernel(
     kc: usize,
+    alpha: f32,
+    lhs: MatRef<f32>,
+    rhs: MatRef<f32>,
     beta: f32,
-    c: &mut MatMut<f32>,
-    dst_rows: core::ops::Range<usize>,
-    dst_cols: core::ops::Range<usize>,
-    dst_buf: &mut [f32],
+    dst: &mut MatMut<f32>,
 ) {
-    super::super::direct_tile(
-        kernel,
-        alpha,
-        lhs_values,
-        rhs_values,
+    const DIM: usize = 4;
+    // Snapshot C before computing, including when coordinates overlap.
+    let mut packed = [0.0; DIM * DIM];
+    crate::packing::registers_from_c(&mut packed, dst.to_ref(), 0..DIM, 0..DIM);
+    kernel_direct(
         kc,
+        alpha,
+        lhs.as_slice(),
+        rhs.as_slice(),
         beta,
-        c,
-        dst_rows,
-        dst_cols,
-        dst_buf,
-        kernel_direct,
+        &mut packed,
+        1,
+        DIM,
     );
+    crate::packing::registers_to_c(&packed, dst, 0..DIM, 0..DIM);
 }
 
-fn neon_4x4_microkernel_f32(
+/// C's row and column strides are measured in `f32` elements. One stride must
+/// be 1; the other is the leading dimension (`ld`) and must be at least 4.
+/// Tiles retain the parent matrix's leading dimension, including any padding.
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+fn kernel_direct(
     kc: usize,
     alpha: f32,
     lhs: &[f32],
     rhs: &[f32],
     beta: f32,
-    dst_colmajor: &mut [f32],
+    c: &mut [f32],
+    rsc: usize,
+    csc: usize,
 ) {
-    const DIM: usize = 4;
-    assert_eq!(dst_colmajor.len(), DIM * DIM);
-    kernel_direct(kc, alpha, rhs, lhs, beta, dst_colmajor, DIM);
-}
-
-/// `ld` is C's leading dimension, in `f32` elements: the row stride for row-major
-/// C or the column stride for column-major C. The other stride must be 1.
-/// It must be at least 4; a packed 4×4 scratch tile uses 4, while a tile within
-/// a larger matrix retains that matrix's stride, including any padding.
-#[inline]
-fn kernel_direct(kc: usize, alpha: f32, x: &[f32], y: &[f32], beta: f32, c: &mut [f32], ld: usize) {
+    // Rows of accumulators for row-major C, columns for column-major C.
+    // Swapping operands can change which NaN payload survives a NaN product.
+    let (x, y, ld) = if csc == 1 {
+        (lhs, rhs, rsc)
+    } else {
+        assert_eq!(rsc, 1);
+        (rhs, lhs, csc)
+    };
     const DIM: usize = 4;
     let packed_len = DIM.checked_mul(kc).expect("packed panel length overflow");
     assert_eq!(x.len(), packed_len);
@@ -206,6 +192,54 @@ mod tests {
     use crate::std_prelude::*;
 
     #[test]
+    fn public_microkernel_respects_arbitrary_output_strides() {
+        if !cfg!(target_feature = "neon") {
+            return;
+        }
+        // SAFETY: NEON is enabled for this target.
+        let kernel = unsafe { NeonKernel4x4::<f32>::new() };
+        const KC: usize = 3;
+        let lhs: Vec<f32> = (0..DIM * KC).map(|i| (i % 5) as f32 - 2.0).collect();
+        let rhs: Vec<f32> = (0..DIM * KC).map(|i| (i % 7) as f32 - 3.0).collect();
+        for (rs, cs) in [
+            (DIM, 1),
+            (1, DIM),
+            (DIM + 3, 1),
+            (1, DIM + 3),
+            (2, 2 * DIM + 3),
+            (3, 2),
+            (1, 1),
+            (0, 1),
+            (1, 0),
+            (0, 0),
+        ] {
+            let span = (DIM - 1) * (rs + cs) + 1;
+            let mut actual: Vec<f32> = (0..span + 4).map(|i| (i % 13) as f32 + 1.0).collect();
+            let before = actual.clone();
+            let mut expected = before.clone();
+            // Every logical cell reads the original C; column-major scatter
+            // determines which result survives when destinations overlap.
+            for col in 0..DIM {
+                for row in 0..DIM {
+                    let at = 2 + row * rs + col * cs;
+                    let sum: f32 = (0..KC)
+                        .map(|k| lhs[k * DIM + row] * rhs[k * DIM + col])
+                        .sum();
+                    expected[at] = 2.0 * sum - 3.0 * before[at];
+                }
+            }
+            kernel.microkernel(
+                2.0,
+                MatRef::col_major(DIM, KC, &lhs),
+                MatRef::row_major(KC, DIM, &rhs),
+                -3.0,
+                &mut MatMut::from_parts(DIM, DIM, &mut actual[2..2 + span], rs, cs).unwrap(),
+            );
+            assert_eq!(actual, expected, "strides ({rs}, {cs})");
+        }
+    }
+
+    #[test]
     fn unrolled_and_remainder_loops_preserve_guards() {
         // Every remainder, the empty dot product, and one/two unrolled groups.
         for kc in 0..=9 {
@@ -213,7 +247,7 @@ mod tests {
             let rhs: Vec<f32> = (0..4 * kc).map(|i| (i % 11) as f32 - 5.0).collect();
             let mut dst = [12345.0; 18];
             dst[1..17].fill(2.0);
-            neon_4x4_microkernel_f32(kc, 2.0, &lhs, &rhs, -3.0, &mut dst[1..17]);
+            kernel_direct(kc, 2.0, &lhs, &rhs, -3.0, &mut dst[1..17], 1, 4);
             assert_eq!(dst[0], 12345.0);
             assert_eq!(dst[17], 12345.0);
             for col in 0..4 {
@@ -232,25 +266,25 @@ mod tests {
     #[test]
     #[should_panic]
     fn rejects_mismatched_panels() {
-        neon_4x4_microkernel_f32(1, 1.0, &[0.0; 4], &[0.0; 3], 0.0, &mut [0.0; 16]);
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 3], 0.0, &mut [0.0; 16], 1, 4);
     }
 
     #[test]
     #[should_panic]
     fn rejects_panels_short_for_depth() {
-        neon_4x4_microkernel_f32(2, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 16]);
+        kernel_direct(2, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 16], 1, 4);
     }
 
     #[test]
     #[should_panic]
     fn rejects_short_destination() {
-        neon_4x4_microkernel_f32(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 15]);
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 15], 1, 4);
     }
 
     #[test]
     #[should_panic]
     fn rejects_panel_length_overflow() {
-        neon_4x4_microkernel_f32(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16]);
+        kernel_direct(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16], 1, 4);
     }
 
     // The direct path must actually be taken, not merely agree with the buffered one:
@@ -274,7 +308,7 @@ mod tests {
             let mut values = vec![1f32; len];
             let mut c = MatMut::from_parts(DIM, DIM, values.as_mut_slice(), rsc, csc).unwrap();
             let mut dst_buf = vec![SENTINEL; DIM * DIM];
-            neon_4x4_tile_f32(
+            crate::gemm::direct_tile(
                 &kernel,
                 1.0,
                 &lhs,
@@ -329,7 +363,7 @@ mod safety_tests {
             }
             let before = c.clone();
             let (alpha, beta) = (f32::from(alpha), f32::from(beta));
-            kernel_direct(kc, alpha, &x, &y, beta, &mut c[offset..offset + len], ld);
+            kernel_direct(kc, alpha, &x, &y, beta, &mut c[offset..offset + len], ld, 1);
             for i in 0..c.len() {
                 let expected = if i >= offset && i < offset + len && (i - offset) % ld < 4 {
                     let (row, col) = ((i - offset) / ld, (i - offset) % ld);
@@ -346,25 +380,31 @@ mod safety_tests {
     #[test]
     #[should_panic]
     fn rejects_short_first_panel() {
-        kernel_direct(1, 1.0, &[0.0; 3], &[0.0; 4], 0.0, &mut [0.0; 16], 4);
+        kernel_direct(1, 1.0, &[0.0; 3], &[0.0; 4], 0.0, &mut [0.0; 16], 4, 1);
     }
 
     #[test]
     #[should_panic(expected = "ld >= DIM")]
     fn rejects_overlapping_destination_lines() {
-        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 16], 3);
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 16], 3, 1);
+    }
+
+    #[test]
+    #[should_panic]
+    fn rejects_destination_without_contiguous_axis() {
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 34], 2, 9);
     }
 
     #[test]
     #[should_panic(expected = "packed panel length overflow")]
     fn rejects_panel_length_overflow() {
-        kernel_direct(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16], 4);
+        kernel_direct(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16], 4, 1);
     }
 
     #[test]
     #[should_panic(expected = "c.len() >= tile_len")]
     fn rejects_short_destination_span() {
-        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 24], 7);
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 24], 7, 1);
     }
 
     #[test]
@@ -378,6 +418,7 @@ mod safety_tests {
             0.0,
             &mut [0.0; 16],
             usize::MAX,
+            1,
         );
     }
 }
@@ -407,6 +448,7 @@ mod proofs {
             kani::any(),
             &mut dst[1..DEST - 1],
             LD,
+            1,
         );
         if index == 0 || index == DEST - 1 || (index - 1) % LD >= 4 {
             assert_eq!(dst[index].to_bits(), before);
@@ -490,20 +532,22 @@ mod proofs {
         y: &[f32],
         _: f32,
         c: &mut [f32],
-        ld: usize,
+        rsc: usize,
+        csc: usize,
     ) {
         let packed = 4usize.checked_mul(kc).unwrap();
         assert_eq!(x.len(), packed);
         assert_eq!(y.len(), packed);
-        assert!(ld >= 4);
-        let span = 3usize
-            .checked_mul(ld)
-            .and_then(|n| n.checked_add(4))
+        assert!((rsc == 1 && csc >= 4) || (csc == 1 && rsc >= 4));
+        let span = (3usize.checked_mul(rsc).unwrap())
+            .checked_add(3usize.checked_mul(csc).unwrap())
+            .unwrap()
+            .checked_add(1)
             .unwrap();
         assert!(c.len() >= span);
         for row in 0..4 {
             for col in 0..4 {
-                c[row * ld + col] = kani::any();
+                c[row * rsc + col * csc] = kani::any();
             }
         }
     }
@@ -518,7 +562,7 @@ mod proofs {
         let mut storage = [4.0; 55];
         let mut c = MatMut::from_parts(5, 5, &mut storage[1..54], rs, cs).unwrap();
         let mut scratch = [123.0; 16];
-        neon_4x4_tile_f32(
+        crate::gemm::direct_tile(
             kernel,
             2.0,
             &lhs,
@@ -548,7 +592,7 @@ mod proofs {
         let rhs = [11.0, 12.0, 13.0, 14.0];
         let mut storage = [4.0; 65];
         let mut c = MatMut::from_parts(dim, dim, &mut storage[1..64], 16, 2).unwrap();
-        neon_4x4_tile_f32(
+        crate::gemm::direct_tile(
             kernel,
             1.0,
             &lhs,
@@ -568,6 +612,48 @@ mod proofs {
         {
             assert_eq!(storage[index], 4.0);
         }
+    }
+
+    // Exercise the public fallback with arbitrary float bits. Its real gather
+    // and scatter stay enabled; only the checked arithmetic footprint is modeled.
+    fn public_fallback_case<const RS: usize, const CS: usize, const LEN: usize>() {
+        let lhs: [f32; 4] = kani::any();
+        let rhs: [f32; 4] = kani::any();
+        let mut storage: [f32; LEN] = kani::any();
+        let index: usize = kani::any_where(|&i| i < LEN);
+        let before = storage[index].to_bits();
+        // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
+        let kernel = unsafe { NeonKernel4x4::new() };
+        kernel.microkernel(
+            kani::any(),
+            MatRef::col_major(4, 1, &lhs),
+            MatRef::row_major(1, 4, &rhs),
+            kani::any(),
+            &mut MatMut::from_parts(4, 4, &mut storage[1..LEN - 1], RS, CS).unwrap(),
+        );
+        let mut touched = false;
+        for row in 0..4 {
+            for col in 0..4 {
+                touched |= index == 1 + row * RS + col * CS;
+            }
+        }
+        if !touched {
+            assert_eq!(storage[index].to_bits(), before);
+        }
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn public_strided_output_preserves_guards() {
+        public_fallback_case::<2, 11, 42>();
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn public_aliased_output_preserves_guards() {
+        public_fallback_case::<0, 0, 3>();
     }
 
     #[kani::proof]

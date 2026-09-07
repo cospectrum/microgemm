@@ -94,8 +94,7 @@ impl Kernel for CustomKernel {
         assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
 
-        // dst is col-major
-        assert_eq!(dst.row_stride(), 1);
+        // dst may have arbitrary strides; use dst.get/get_mut to respect them.
         assert_eq!(dst.nrows(), Self::MR);
         assert_eq!(dst.ncols(), Self::NR);
 
