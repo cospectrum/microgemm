@@ -120,19 +120,23 @@ impl Kernel for CustomKernel {
 
 ## Benchmarks
 
+```sh
+cargo make comparison
+```
+
 All benchmarks are performed in a `single thread` on square matrices of dimension `n`.
 
 ### f32
 `PackSizes { mc: n, kc: n, nc: n }`
 
-####  aarch64 (M1)
+#### aarch64 (M5)
 ```
    n  NeonKernel8x8           faer matrixmultiply
- 128         64.6µs        256.3µs         49.5µs
- 256        419.5µs          3.2ms        518.2µs
- 512          2.9ms         16.3ms          2.8ms
-1024           23ms        132.7ms         22.5ms
-2048        185.5ms             1s        182.8ms
+ 128         72.5µs          277µs         71.7µs
+ 256        568.3µs          2.4ms          561µs
+ 512          4.4ms         20.2ms          4.4ms
+1024         35.7ms        167.8ms           35ms
+2048        286.3ms           1.4s        306.5ms
 ```
 
 ## License
