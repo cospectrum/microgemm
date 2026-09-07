@@ -23,7 +23,7 @@ impl Kernel for NeonKernel8x8<f32> {
         let kc = lhs.ncols();
         let (rsc, csc) = (dst.row_stride(), dst.col_stride());
         if (csc == 1 && rsc >= DIM) || (rsc == 1 && csc >= DIM) {
-            kernel_direct(
+            direct_microkernel(
                 kc,
                 alpha,
                 lhs.as_slice(),
@@ -54,7 +54,7 @@ fn buffered_microkernel(
     // Snapshot C before computing, including when coordinates overlap.
     let mut packed = [0.0; DIM * DIM];
     crate::packing::registers_from_c(&mut packed, dst.to_ref(), 0..DIM, 0..DIM);
-    kernel_direct(
+    direct_microkernel(
         kc,
         alpha,
         lhs.as_slice(),
@@ -74,7 +74,7 @@ fn buffered_microkernel(
 /// Tiles retain the parent matrix's leading dimension, including any padding.
 #[inline]
 #[allow(clippy::too_many_arguments)]
-fn kernel_direct(
+fn direct_microkernel(
     kc: usize,
     alpha: f32,
     lhs: &[f32],
@@ -108,7 +108,7 @@ fn kernel_direct(
     // disjoint. The slices keep C exclusively borrowed and separate from x/y.
     // NEON is guaranteed by the kernel's constructor.
     unsafe {
-        kernel_direct_unchecked(kc, alpha, x.as_ptr(), y.as_ptr(), beta, c.as_mut_ptr(), ld);
+        direct_microkernel_unchecked(kc, alpha, x.as_ptr(), y.as_ptr(), beta, c.as_mut_ptr(), ld);
     }
 }
 
@@ -117,7 +117,7 @@ fn kernel_direct(
 /// c must point to 7 * ld + 8 readable/writable f32 values, exclusive of x/y,
 /// with ld >= 8. All spans must fit their allocations without integer overflow.
 #[inline]
-unsafe fn kernel_direct_unchecked(
+unsafe fn direct_microkernel_unchecked(
     kc: usize,
     alpha: f32,
     x: *const f32,
@@ -283,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn test_kernel_direct_both_orientations() {
+    fn test_direct_microkernel_both_orientations() {
         let (alpha, beta) = (2f32, -3f32);
         for kc in [0usize, 1, 5] {
             for ld in [8usize, 11, 20] {
@@ -298,7 +298,7 @@ mod tests {
                         c[i * ld + j] = c0[i * DIM + j];
                     }
                 }
-                kernel_direct(kc, alpha, &lhs, &rhs, beta, &mut c, ld, 1);
+                direct_microkernel(kc, alpha, &lhs, &rhs, beta, &mut c, ld, 1);
                 for i in 0..DIM {
                     for j in 0..DIM {
                         assert_eq!(
@@ -316,7 +316,7 @@ mod tests {
                         c[j * ld + i] = c0[i * DIM + j];
                     }
                 }
-                kernel_direct(kc, alpha, &rhs, &lhs, beta, &mut c, ld, 1);
+                direct_microkernel(kc, alpha, &rhs, &lhs, beta, &mut c, ld, 1);
                 for i in 0..DIM {
                     for j in 0..DIM {
                         assert_eq!(
@@ -332,20 +332,20 @@ mod tests {
 
     #[test]
     #[should_panic]
-    fn test_kernel_direct_rejects_short_panel() {
-        kernel_direct(1, 1.0, &[0.0; 8], &[0.0; 7], 0.0, &mut [0.0; 64], 8, 1);
+    fn test_direct_microkernel_rejects_short_panel() {
+        direct_microkernel(1, 1.0, &[0.0; 8], &[0.0; 7], 0.0, &mut [0.0; 64], 8, 1);
     }
 
     #[test]
     #[should_panic(expected = "c.len() >= tile_len")]
-    fn test_kernel_direct_rejects_short_destination() {
-        kernel_direct(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 63], 8, 1);
+    fn test_direct_microkernel_rejects_short_destination() {
+        direct_microkernel(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 63], 8, 1);
     }
 
     #[test]
     #[should_panic(expected = "C tile length overflow")]
-    fn test_kernel_direct_rejects_stride_overflow() {
-        kernel_direct(
+    fn test_direct_microkernel_rejects_stride_overflow() {
+        direct_microkernel(
             1,
             1.0,
             &[0.0; 8],
@@ -405,7 +405,7 @@ mod tests {
 
 #[cfg(test)]
 mod safety_tests {
-    use super::kernel_direct;
+    use super::direct_microkernel;
     use crate::std_prelude::*;
     use proptest::prelude::*;
 
@@ -437,7 +437,7 @@ mod safety_tests {
             }
             let before = c.clone();
             let (alpha, beta) = (f32::from(alpha), f32::from(beta));
-            kernel_direct(kc, alpha, &x, &y, beta, &mut c[offset..offset + len], ld, 1);
+            direct_microkernel(kc, alpha, &x, &y, beta, &mut c[offset..offset + len], ld, 1);
             for i in 0..c.len() {
                 let expected = if i >= offset && i < offset + len && (i - offset) % ld < 8 {
                     let (row, col) = ((i - offset) / ld, (i - offset) % ld);
@@ -454,25 +454,25 @@ mod safety_tests {
     #[test]
     #[should_panic]
     fn rejects_short_first_panel() {
-        kernel_direct(1, 1.0, &[0.0; 7], &[0.0; 8], 0.0, &mut [0.0; 64], 8, 1);
+        direct_microkernel(1, 1.0, &[0.0; 7], &[0.0; 8], 0.0, &mut [0.0; 64], 8, 1);
     }
 
     #[test]
     #[should_panic(expected = "ld >= DIM")]
     fn rejects_overlapping_destination_lines() {
-        kernel_direct(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 64], 7, 1);
+        direct_microkernel(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 64], 7, 1);
     }
 
     #[test]
     #[should_panic]
     fn rejects_destination_without_contiguous_axis() {
-        kernel_direct(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 134], 2, 17);
+        direct_microkernel(1, 1.0, &[0.0; 8], &[0.0; 8], 0.0, &mut [0.0; 134], 2, 17);
     }
 
     #[test]
     #[should_panic(expected = "packed panel length overflow")]
     fn rejects_panel_length_overflow() {
-        kernel_direct(usize::MAX / 8 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 64], 8, 1);
+        direct_microkernel(usize::MAX / 8 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 64], 8, 1);
     }
 }
 
@@ -493,7 +493,7 @@ mod proofs {
         let mut dst: [f32; DEST] = kani::any();
         let index: usize = kani::any_where(|&i| i < DEST);
         let before = dst[index].to_bits();
-        kernel_direct(
+        direct_microkernel(
             kc,
             kani::any(),
             &lhs[1..],
@@ -658,21 +658,21 @@ mod proofs {
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn public_strided_output_preserves_guards() {
         public_fallback_case::<2, 19, 150>();
     }
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn public_aliased_output_preserves_guards() {
         public_fallback_case::<0, 0, 3>();
     }
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn direct_row_major_tile() {
         // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
         let kernel = unsafe { NeonKernel8x8::new() };
@@ -681,7 +681,7 @@ mod proofs {
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn direct_col_major_tile() {
         // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
         let kernel = unsafe { NeonKernel8x8::new() };
@@ -690,7 +690,7 @@ mod proofs {
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn buffered_strided_tile() {
         // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
         let kernel = unsafe { NeonKernel8x8::new() };
@@ -699,7 +699,7 @@ mod proofs {
 
     #[kani::proof]
     #[kani::unwind(9)]
-    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    #[kani::stub(super::direct_microkernel, checked_kernel_footprint)]
     fn buffered_ragged_tile() {
         // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
         let kernel = unsafe { NeonKernel8x8::new() };
