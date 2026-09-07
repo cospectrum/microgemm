@@ -1,5 +1,6 @@
 use crate::kernel::Multiply;
 use crate::{Kernel, MatMut, MatRef, PackSizes};
+use core::ops::Range;
 use generic_array::{sequence::GenericSequence, GenericArray};
 use num_traits::{One, Zero};
 
@@ -19,6 +20,63 @@ pub(crate) fn gemm_with_kernel<T, K>(
 ) where
     T: Copy + Zero + One,
     K: Kernel<Scalar = T> + ?Sized,
+{
+    gemm_with_tile(
+        kernel,
+        alpha,
+        a,
+        b,
+        beta,
+        c,
+        pack_sizes,
+        packing_buf,
+        buffered_tile,
+    );
+}
+
+// The default per-tile operation: stage the c tile through dst_buf around `Kernel::microkernel`.
+#[allow(clippy::too_many_arguments)]
+#[inline]
+pub(crate) fn buffered_tile<T, K>(
+    kernel: &K,
+    alpha: T,
+    lhs_values: &[T],
+    rhs_values: &[T],
+    kc: usize,
+    beta: T,
+    c: &mut MatMut<T>,
+    dst_rows: Range<usize>,
+    dst_cols: Range<usize>,
+    dst_buf: &mut [T],
+) where
+    T: Copy + Zero + One,
+    K: Kernel<Scalar = T> + ?Sized,
+{
+    let lhs = MatRef::col_major(K::MR, kc, lhs_values);
+    let rhs = MatRef::row_major(kc, K::NR, rhs_values);
+    crate::packing::registers_from_c(dst_buf, c.to_ref(), dst_rows.clone(), dst_cols.clone());
+    let mut dst = MatMut::col_major(K::MR, K::NR, &mut *dst_buf);
+    kernel.microkernel(alpha, lhs, rhs, beta, &mut dst);
+    crate::packing::registers_to_c(&*dst_buf, c, dst_rows, dst_cols);
+}
+
+// Same loop nest as `gemm_with_kernel`, with the per-tile operation left open.
+#[allow(clippy::too_many_arguments)]
+#[inline]
+pub(crate) fn gemm_with_tile<T, K, F>(
+    kernel: &K,
+    alpha: T,
+    a: MatRef<T>,
+    b: MatRef<T>,
+    beta: T,
+    c: &mut MatMut<T>,
+    pack_sizes: PackSizes,
+    packing_buf: &mut [T],
+    tile: F,
+) where
+    T: Copy + Zero + One,
+    K: Kernel<Scalar = T> + ?Sized,
+    F: Fn(&K, T, &[T], &[T], usize, T, &mut MatMut<T>, Range<usize>, Range<usize>, &mut [T]),
 {
     assert_eq!(a.nrows(), c.nrows());
     assert_eq!(a.ncols(), b.nrows());
@@ -77,25 +135,26 @@ pub(crate) fn gemm_with_kernel<T, K>(
                 for (l2, jr) in (0..nc).step_by(nr).enumerate() {
                     let rsize = kc * nr;
                     let rhs_values = &bpack[rsize * l2..rsize * (l2 + 1)];
-                    let rhs = MatRef::row_major(kc, nr, rhs_values);
 
                     let dst_cols = jc + jr..jc + jr + nr;
 
                     for (l1, ir) in (0..mc).step_by(mr).enumerate() {
                         let lsize = mr * kc;
                         let lhs_values = &apack[lsize * l1..lsize * (l1 + 1)];
-                        let lhs = MatRef::col_major(mr, kc, lhs_values);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-                        crate::packing::registers_from_c(
-                            dst_buf,
-                            c.to_ref(),
-                            dst_rows.clone(),
+                        tile(
+                            kernel,
+                            alpha,
+                            lhs_values,
+                            rhs_values,
+                            kc,
+                            beta,
+                            c,
+                            dst_rows,
                             dst_cols.clone(),
+                            &mut *dst_buf,
                         );
-                        let mut dst = MatMut::col_major(mr, nr, dst_buf);
-                        kernel.microkernel(alpha, lhs, rhs, beta, &mut dst);
-                        crate::packing::registers_to_c(dst_buf, c, dst_rows, dst_cols.clone());
                     }
                 }
             }

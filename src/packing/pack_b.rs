@@ -40,6 +40,35 @@ pub(crate) fn pack_b<T>(
         debug_assert!(block_cols.end <= b.ncols());
         debug_assert_eq!(block_cols.len(), nr);
 
+        // The kani harnesses prove the original lane loop below; this fast path is covered
+        // by the packing proptests and by miri instead.
+        #[cfg(not(kani))]
+        {
+            let lane_stride = b.row_stride();
+            // Fast path: with `stride == 1` the block is one bounds-checked subslice of
+            // `nr`-wide lanes `lane_stride` apart - no per-lane index check or re-borrow.
+            let block_src = if stride == 1 && kc > 0 && lane_stride >= nr {
+                let end = b.checked_idx(rows.end - 1, block_cols.start);
+                b.checked_idx(rows.start, block_cols.start)
+                    .zip(end.and_then(|i| i.checked_add(nr)))
+                    .and_then(|(first, last)| b.as_slice().get(first..last))
+            } else {
+                None
+            };
+            if let Some(src) = block_src {
+                let (block, rest) = core::mem::take(&mut it).split_at_mut(nr * kc);
+                let (dst, tail_dst) = block.split_at_mut(nr * (kc - 1));
+                let (lane_src, tail_src) = src.split_at(lane_stride * (kc - 1));
+                let lanes = dst
+                    .chunks_exact_mut(nr)
+                    .zip(lane_src.chunks_exact(lane_stride));
+                lanes.for_each(|(dst, lane)| dst.copy_from_slice(&lane[..nr]));
+                tail_dst.copy_from_slice(tail_src);
+                it = rest;
+                continue;
+            }
+        }
+
         for row in rows.clone() {
             debug_assert!(row < b.nrows());
             let idx = b.idx(row, block_cols.start);
