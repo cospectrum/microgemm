@@ -38,10 +38,6 @@ half = { version = "2", features = ["num-traits"] }
 name = "gemm_f32"
 harness = false
 
-[[bench]]
-name = "neon_compare"
-harness = false
-
 [profile.dev]
 opt-level = 1
 

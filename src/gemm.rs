@@ -420,4 +420,108 @@ mod tests {
             }
         }
     }
+
+    struct BufferedKernel<K>(K);
+
+    impl<K: Kernel> Kernel for BufferedKernel<&K> {
+        type Scalar = K::Scalar;
+        type Mr = K::Mr;
+        type Nr = K::Nr;
+
+        fn microkernel(
+            &self,
+            alpha: Self::Scalar,
+            lhs: MatRef<Self::Scalar>,
+            rhs: MatRef<Self::Scalar>,
+            beta: Self::Scalar,
+            dst: &mut MatMut<Self::Scalar>,
+        ) {
+            let mut values = vec![Self::Scalar::zero(); Self::MR * Self::NR];
+            crate::packing::registers_from_c(&mut values, dst.to_ref(), 0..Self::MR, 0..Self::NR);
+            self.0.microkernel(
+                alpha,
+                lhs,
+                rhs,
+                beta,
+                &mut MatMut::col_major(Self::MR, Self::NR, &mut values),
+            );
+            crate::packing::registers_to_c(&values, dst, 0..Self::MR, 0..Self::NR);
+        }
+    }
+
+    fn compare_buffered<K>(kernel: K)
+    where
+        K: Kernel<Scalar = f32>,
+    {
+        let dim = K::MR;
+        let m = 2 * dim + 1;
+        let n = dim + 1;
+        let k = 5;
+        let a: Vec<_> = (0..m * k).map(|i| (i as f32 % 13.0 - 6.0) / 7.0).collect();
+        let b: Vec<_> = (0..k * n).map(|i| (i as f32 % 11.0 - 5.0) / 3.0).collect();
+        let a = MatRef::row_major(m, k, &a);
+        let b = MatRef::col_major(k, n, &b);
+        let packs = PackSizes {
+            mc: 2 * dim,
+            kc: 2,
+            nc: dim,
+        };
+        let mut scratch = vec![0.0; packs.buf_len()];
+        // Full tiles at nonzero origins, padding, ragged tails, overlapping
+        // output coordinates and neither-unit strides all retain the old result.
+        for (rs, cs) in [
+            (n, 1),
+            (1, m),
+            (n + 3, 1),
+            (1, m + 3),
+            (2, 2 * m + 3),
+            (1, 1),
+            (0, 1),
+        ] {
+            let len = (m - 1) * rs + (n - 1) * cs + 3;
+            let mut actual: Vec<_> = (0..len).map(|i| (i as f32 % 17.0 - 8.0) / 9.0).collect();
+            let mut expected = actual.clone();
+            gemm_with_kernel(
+                &kernel,
+                0.7,
+                a,
+                b,
+                -0.3,
+                &mut MatMut::from_parts(m, n, &mut actual[1..len - 1], rs, cs).unwrap(),
+                packs,
+                &mut scratch,
+            );
+            gemm_with_kernel(
+                &BufferedKernel(&kernel),
+                0.7,
+                a,
+                b,
+                -0.3,
+                &mut MatMut::from_parts(m, n, &mut expected[1..len - 1], rs, cs).unwrap(),
+                packs,
+                &mut scratch,
+            );
+            assert!(
+                actual
+                    .iter()
+                    .zip(&expected)
+                    .all(|(a, b)| a.to_bits() == b.to_bits()),
+                "dimension {dim}, strides ({rs}, {cs})"
+            );
+        }
+    }
+
+    #[test]
+    fn generic_gemm_preserves_buffered_results_for_all_sizes() {
+        use crate::kernels::{
+            GenericKernel16x16, GenericKernel2x2, GenericKernel32x32, GenericKernel4x4,
+            GenericKernel8x8,
+        };
+
+        compare_buffered(GenericKernel2x2::new());
+        compare_buffered(GenericKernel4x4::new());
+        compare_buffered(GenericKernel8x8::new());
+        compare_buffered(GenericKernel16x16::new());
+        compare_buffered(GenericKernel32x32::new());
+    }
 }

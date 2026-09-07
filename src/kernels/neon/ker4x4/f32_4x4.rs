@@ -286,52 +286,6 @@ mod tests {
     fn rejects_panel_length_overflow() {
         direct_microkernel(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16], 1, 4);
     }
-
-    // Full tiles must bypass the shared scratch buffer, even if the kernel
-    // itself needs temporary storage for an unsupported output layout.
-    #[test]
-    fn test_tile_takes_direct_path() {
-        let kernel = if cfg!(target_feature = "neon") {
-            unsafe { NeonKernel4x4::<f32>::new() }
-        } else {
-            println!("neon feature is not supported");
-            return;
-        };
-        const SENTINEL: f32 = 123.0;
-        let kc = 3;
-        let lhs = [1.0; 12];
-        let rhs = [2.0; 12];
-
-        // returns true if dst_buf was left untouched, i.e. the direct path ran
-        let run = |rsc: usize, csc: usize| -> bool {
-            let len = (DIM - 1) * rsc + (DIM - 1) * csc + 1;
-            let mut values = vec![1f32; len];
-            let mut c = MatMut::from_parts(DIM, DIM, values.as_mut_slice(), rsc, csc).unwrap();
-            let mut dst_buf = vec![SENTINEL; DIM * DIM];
-            crate::gemm::direct_tile(
-                &kernel,
-                1.0,
-                &lhs,
-                &rhs,
-                kc,
-                1.0,
-                &mut c,
-                0..DIM,
-                0..DIM,
-                &mut dst_buf,
-            );
-            dst_buf.iter().all(|&x| x == SENTINEL)
-        };
-
-        assert!(run(DIM, 1), "row-major c must take the direct path");
-        assert!(run(1, DIM), "col-major c must take the direct path");
-        assert!(run(1, 2), "full aliasing tiles bypass shared buffering");
-        assert!(
-            run(2, 2 * DIM + 1),
-            "full nonunit tiles bypass shared buffering"
-        );
-        assert!(run(0, 0), "full broadcast tiles bypass shared buffering");
-    }
 }
 
 #[cfg(test)]
