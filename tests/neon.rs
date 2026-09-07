@@ -131,14 +131,20 @@ enum CLayout {
     RowStrided,
     /// rsc = 1, csc = 4: overlapping columns, must fall back to the buffered path
     Aliased,
+    /// Neither axis is contiguous: buffered gather/scatter.
+    Strided,
+    /// Every element refers to the same location: buffered traversal order matters.
+    Broadcast,
 }
 
-const C_LAYOUTS: [CLayout; 5] = [
+const C_LAYOUTS: [CLayout; 7] = [
     CLayout::Row,
     CLayout::Col,
     CLayout::ColStrided,
     CLayout::RowStrided,
     CLayout::Aliased,
+    CLayout::Strided,
+    CLayout::Broadcast,
 ];
 
 impl CLayout {
@@ -149,6 +155,8 @@ impl CLayout {
             CLayout::ColStrided => (1, 13),
             CLayout::RowStrided => (11, 1),
             CLayout::Aliased => (1, 4),
+            CLayout::Strided => (2 * n + 3, 2),
+            CLayout::Broadcast => (0, 0),
         }
     }
     fn len(self, m: usize, n: usize) -> usize {
@@ -300,6 +308,41 @@ fn test_neon8x8_direct_matches_buffered() {
                             &direct, &buffered, m, k, n, layout, alpha, beta, big_pack,
                         );
                     }
+                }
+            }
+        }
+    }
+}
+
+#[test]
+fn test_neon8x8_zero_beta_preserves_nonfinite_c() {
+    if !cfg!(target_feature = "neon") {
+        return;
+    }
+    // SAFETY: NEON is enabled for this target.
+    let kernel = unsafe { NeonKernel8x8::<f32>::new() };
+    // One full tile plus edges exercises direct writes and buffered writes together.
+    let a = MatRef::col_major(9, 1, &[1.0; 9]);
+    let b = MatRef::row_major(1, 9, &[2.0; 9]);
+    let pack_sizes = PackSizes {
+        mc: 16,
+        kc: 1,
+        nc: 16,
+    };
+    let mut packing = vec![0.0; pack_sizes.buf_len()];
+    for layout in [CLayout::Row, CLayout::Col] {
+        let (rs, cs) = layout.strides(9, 9);
+        for beta in [0.0, -0.0] {
+            let mut values: Vec<_> = (0..81)
+                .map(|i| [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -0.0][i % 4])
+                .collect();
+            let mut c = MatMut::from_parts(9, 9, &mut values, rs, cs).unwrap();
+            kernel.gemm(1.0, a, b, beta, &mut c, pack_sizes, &mut packing);
+            for (i, value) in values.iter().enumerate() {
+                if i % 4 == 3 {
+                    assert_eq!(*value, 2.0);
+                } else {
+                    assert!(value.is_nan(), "beta={beta} layout={layout:?} at {i}");
                 }
             }
         }

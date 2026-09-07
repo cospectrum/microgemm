@@ -1,7 +1,7 @@
 mod ker4x4;
 mod ker8x8;
 
-#[cfg(any(kani, miri))]
+#[cfg(any(test, kani, miri))]
 mod simd_mock;
 
 #[cfg(target_arch = "aarch64")]

@@ -40,9 +40,6 @@ pub(crate) fn pack_a<T>(
         debug_assert!(block_rows.end <= a.nrows());
         debug_assert_eq!(block_rows.len(), mr);
 
-        // The kani harnesses prove the original lane loop below; this fast path is covered
-        // by the packing proptests and by miri instead.
-        #[cfg(not(kani))]
         {
             let lane_stride = a.col_stride();
             // Fast path: with `stride == 1` the block is one bounds-checked subslice of
@@ -62,7 +59,9 @@ pub(crate) fn pack_a<T>(
                 let lanes = dst
                     .chunks_exact_mut(mr)
                     .zip(lane_src.chunks_exact(lane_stride));
-                lanes.for_each(|(dst, lane)| dst.copy_from_slice(&lane[..mr]));
+                for (dst, lane) in lanes {
+                    dst.copy_from_slice(&lane[..mr]);
+                }
                 tail_dst.copy_from_slice(tail_src);
                 it = rest;
                 continue;
@@ -80,10 +79,9 @@ pub(crate) fn pack_a<T>(
                 let lane = a.as_slice()[idx..].iter().step_by(stride).take(mr);
                 debug_assert_eq!(lane.len(), mr);
                 let zip = lane.zip(&mut it[..mr]);
-                #[cfg(not(kani))]
-                zip.for_each(|(&src, dst)| {
+                for (&src, dst) in zip {
                     *dst = src;
-                });
+                }
             }
             it = &mut it[mr..];
         }
@@ -108,18 +106,15 @@ pub(crate) fn pack_a<T>(
                 let lane = a.as_slice()[idx..].iter().step_by(stride).take(remains);
                 debug_assert_eq!(lane.len(), remains);
                 let zip = lane.zip(&mut it[..remains]);
-                #[cfg(not(kani))]
-                zip.for_each(|(&src, dst)| {
+                for (&src, dst) in zip {
                     *dst = src;
-                });
+                }
             }
-            #[cfg(not(kani))]
             it[remains..mr].fill(T::zero());
             it = &mut it[mr..];
         }
     }
 
-    #[cfg(not(kani))]
     it.fill(T::zero());
 }
 
@@ -285,49 +280,67 @@ mod proptests {
 mod proofs {
     use super::*;
 
-    #[kani::proof]
-    #[kani::unwind(3)] // 1 + max(kc, number_of_valid_blocks)
-    fn check_pack_a() -> Option<()> {
-        const KC_LIMIT: usize = 2;
-        const NUMBER_OF_VALID_BLOCKS_LIMIT: usize = 2;
-
-        const PACK_LEN_LIMIT: usize = 11;
-        const VALUES_LEN_LIMIT: usize = 13;
-        const MC_LIMIT: usize = 13;
-
-        let values = kani::vec::any_vec::<i8, VALUES_LEN_LIMIT>();
-        let a = {
-            let nrows = kani::any();
-            let ncols = kani::any();
-            let row_stride = kani::any_where(|&row_stride| row_stride > 0);
-            let col_stride = kani::any();
-            MatRef::from_parts(nrows, ncols, &values, row_stride, col_stride)?
-        };
-
-        let mr: usize = kani::any_where(|&mr| mr > 0);
-
-        let rows: Range<usize> = kani::any()..kani::any();
-        let cols: Range<usize> = kani::any()..kani::any();
-
-        let mc = rows.len();
-        let kc = cols.len();
-        kani::assume(kc <= KC_LIMIT);
-        kani::assume(mc <= MC_LIMIT);
-        kani::assume(mr <= mc && mc % mr == 0);
-
-        kani::assume(cols.end <= a.ncols());
-        kani::assume(rows.start < a.nrows());
-
-        let number_of_valid_blocks = {
-            let rows_stop_at = a.nrows().min(rows.end);
-            (rows_stop_at - rows.start) / mr
-        };
-        kani::assume(number_of_valid_blocks <= NUMBER_OF_VALID_BLOCKS_LIMIT);
-
-        kani::assume(mc * kc <= PACK_LEN_LIMIT);
-        let mut apack = vec![0; mc * kc];
-        pack_a(mr, &mut apack, a, rows, cols);
-
-        Some(())
+    // One arbitrary output index quantifies over the entire buffer, including
+    // guards. The oracle uses layout arithmetic, independently of the packer.
+    fn check<const MR: usize>(
+        nrows: usize,
+        stride: usize,
+        lane_stride: usize,
+        start: usize,
+        count: usize,
+        col: usize,
+        kc: usize,
+    ) {
+        let values: [i8; 64] = kani::any();
+        let mut actual: [i8; 34] = kani::any();
+        let index: usize = kani::any_where(|&i| i < 34);
+        let before = actual[index];
+        let len = count * kc;
+        let mat = MatRef::from_parts(nrows, 3, &values[..], stride, lane_stride).unwrap();
+        pack_a(
+            MR,
+            &mut actual[1..1 + len],
+            mat,
+            start..start + count,
+            col..col + kc,
+        );
+        if index == 0 || index > len {
+            assert_eq!(actual[index], before);
+        } else {
+            let i = index - 1;
+            let row = start + (i / (MR * kc)) * MR + i % MR;
+            let column = col + (i / MR) % kc;
+            let expected = if row < nrows {
+                values[row * stride + column * lane_stride]
+            } else {
+                0
+            };
+            assert_eq!(actual[index], expected);
+        }
     }
+
+    // Constant layout cases avoid symbolic 64-bit division in iterator lengths.
+    // Values and the output index remain arbitrary in every case.
+    macro_rules! packing_proof {
+        ($name:ident, $mr:literal, $rows:literal, $stride:literal, $ld:literal,
+         $start:literal, $count:literal, $col:literal, $kc:literal) => {
+            #[kani::proof]
+            #[kani::unwind(33)]
+            fn $name() {
+                check::<$mr>($rows, $stride, $ld, $start, $count, $col, $kc);
+            }
+        };
+    }
+
+    packing_proof!(contiguous_leading_5, 2, 5, 1, 5, 1, 4, 1, 2);
+    packing_proof!(contiguous_leading_6, 2, 5, 1, 6, 1, 4, 1, 2);
+    packing_proof!(contiguous_leading_7, 2, 5, 1, 7, 1, 4, 1, 2);
+    packing_proof!(overlapping_lanes_fallback, 2, 5, 1, 1, 1, 4, 1, 2);
+    packing_proof!(strided_two_panels_stride_2, 2, 5, 2, 1, 1, 4, 1, 2);
+    packing_proof!(strided_two_panels_stride_3, 2, 5, 3, 1, 1, 4, 1, 2);
+    packing_proof!(partial_and_whole_padding_stride_1, 2, 4, 1, 12, 1, 6, 1, 2);
+    packing_proof!(partial_and_whole_padding_stride_2, 2, 4, 2, 12, 1, 6, 1, 2);
+    packing_proof!(partial_and_whole_padding_stride_3, 2, 4, 3, 12, 1, 6, 1, 2);
+    packing_proof!(zero_depth_preserves_buffer, 2, 5, 1, 5, 1, 6, 3, 0);
+    packing_proof!(neon_width_full_and_partial_panel, 8, 9, 1, 9, 0, 16, 1, 2);
 }

@@ -257,3 +257,48 @@ mod tests {
         assert_eq!(mat.as_slice(), expect);
     }
 }
+
+#[cfg(kani)]
+mod proofs {
+    use crate::MatRef;
+
+    #[kani::proof]
+    fn accepted_layout_has_valid_indices() {
+        let rows: usize = kani::any_where(|&n| n <= 5);
+        let cols: usize = kani::any_where(|&n| n <= 5);
+        let rs: usize = kani::any_where(|&n| n <= 5);
+        let cs: usize = kani::any_where(|&n| n <= 5);
+        if let Some(mat) = MatRef::from_parts(rows, cols, &[0u8; 16][..], rs, cs) {
+            let row = kani::any_where(|&i| i < rows);
+            let col = kani::any_where(|&i| i < cols);
+            assert!(mat.idx(row, col) < 16);
+            assert_eq!(mat.checked_idx(row, col), Some(mat.idx(row, col)));
+            kani::cover!(rs == 0 && cs == 0);
+            kani::cover!(rs > 0 && cs > 0);
+        }
+    }
+
+    /// Unrestricted machine-width strides: reject addition overflow as well as a
+    /// representable index beyond the allocation, without constructing large arrays.
+    #[kani::proof]
+    fn overflowing_or_outside_layout_is_rejected() {
+        let rs: usize = kani::any();
+        let cs: usize = kani::any();
+        let mat = MatRef::from_parts(2, 2, &[0u8; 4][..], rs, cs);
+        let valid = rs.checked_add(cs).map_or(false, |last| last < 4);
+        assert_eq!(mat.is_some(), valid);
+        kani::cover!(rs.checked_add(cs).is_none());
+        kani::cover!(valid);
+    }
+
+    #[kani::proof]
+    fn multiplying_stride_overflow_is_rejected() {
+        let rs: usize = kani::any();
+        let cs: usize = kani::any();
+        let mat = MatRef::from_parts(3, 1, &[0u8; 4][..], rs, cs);
+        // The last index is 2*rs; a one-column matrix never uses its col stride.
+        assert_eq!(mat.is_some(), rs <= 1);
+        kani::cover!(rs > usize::MAX / 2);
+        kani::cover!(rs == 1 && cs == usize::MAX);
+    }
+}

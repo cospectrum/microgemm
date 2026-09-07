@@ -132,7 +132,7 @@ extern crate approx;
 #[macro_use]
 extern crate std;
 
-#[cfg(any(test, kani))]
+#[cfg(test)]
 mod std_prelude {
     pub use std::prelude::rust_2021::*;
 }
