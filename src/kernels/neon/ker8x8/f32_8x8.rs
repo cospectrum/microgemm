@@ -70,28 +70,18 @@ fn neon_8x8_tile_f32(
     dst_cols: core::ops::Range<usize>,
     dst_buf: &mut [f32],
 ) {
-    const DIM: usize = 8;
-    let (rsc, csc) = (c.row_stride(), c.col_stride());
-    if dst_rows.len() == DIM
-        && dst_cols.len() == DIM
-        && dst_rows.end <= c.nrows()
-        && dst_cols.end <= c.ncols()
-        && ((csc == 1 && rsc >= DIM) || (rsc == 1 && csc >= DIM))
-    {
-        let at = c.idx(dst_rows.start, dst_cols.start);
-        let ld = if csc == 1 { rsc } else { csc };
-        // Row-major C uses rows of accumulators; column-major C uses columns.
-        // Swapping the product operands can change which NaN payload survives.
-        let (x, y) = if csc == 1 {
-            (lhs_values, rhs_values)
-        } else {
-            (rhs_values, lhs_values)
-        };
-        kernel_direct(kc, alpha, x, y, beta, &mut c.as_mut_slice()[at..], ld);
-        return;
-    }
-    crate::gemm::buffered_tile(
-        kernel, alpha, lhs_values, rhs_values, kc, beta, c, dst_rows, dst_cols, dst_buf,
+    super::super::direct_tile(
+        kernel,
+        alpha,
+        lhs_values,
+        rhs_values,
+        kc,
+        beta,
+        c,
+        dst_rows,
+        dst_cols,
+        dst_buf,
+        kernel_direct,
     );
 }
 
@@ -110,6 +100,10 @@ fn neon_8x8_microkernel_f32(
 
 // acc[l] (4 contiguous elements along y's packed direction) = sum_k y_vec * x[l];
 // the tile vector `l` lives at `c + l * ld + lane_base`.
+/// `ld` is C's leading dimension, in `f32` elements: the row stride for row-major
+/// C or the column stride for column-major C. The other stride must be 1.
+/// It must be at least 8; a packed 8×8 scratch tile uses 8, while a tile within
+/// a larger matrix retains that matrix's stride, including any padding.
 #[inline]
 fn kernel_direct(kc: usize, alpha: f32, x: &[f32], y: &[f32], beta: f32, c: &mut [f32], ld: usize) {
     const DIM: usize = 8;

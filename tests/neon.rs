@@ -97,15 +97,13 @@ impl<'a> TestCase<'a> {
     }
 }
 
-// The `NeonKernel8x8<f32>` gemm writes full 8x8 tiles straight into c instead of staging
-// them through a buffer. This kernel keeps the same microkernel but not the `gemm`
-// override, so it always takes the buffered path; the two must agree bit for bit.
-struct BufferedKernel8x8(NeonKernel8x8<f32>);
+// Forward only microkernel so the default GEMM always stages C through scratch.
+struct BufferedKernel<K>(K);
 
-impl Kernel for BufferedKernel8x8 {
+impl<K: Kernel<Scalar = f32>> Kernel for BufferedKernel<K> {
     type Scalar = f32;
-    type Mr = microgemm::typenum::U8;
-    type Nr = microgemm::typenum::U8;
+    type Mr = K::Mr;
+    type Nr = K::Nr;
 
     fn microkernel(
         &self,
@@ -129,7 +127,7 @@ enum CLayout {
     ColStrided,
     /// rsc = 11, csc = 1: direct path, ld > 8
     RowStrided,
-    /// rsc = 1, csc = 4: overlapping columns, must fall back to the buffered path
+    /// rsc = 1, csc = 2: overlapping columns, must fall back to the buffered path
     Aliased,
     /// Neither axis is contiguous: buffered gather/scatter.
     Strided,
@@ -154,7 +152,7 @@ impl CLayout {
             CLayout::Col => (1, m),
             CLayout::ColStrided => (1, 13),
             CLayout::RowStrided => (11, 1),
-            CLayout::Aliased => (1, 4),
+            CLayout::Aliased => (1, 2),
             CLayout::Strided => (2 * n + 3, 2),
             CLayout::Broadcast => (0, 0),
         }
@@ -182,9 +180,9 @@ fn round_up_8(x: usize) -> usize {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn check_direct_matches_buffered(
-    direct: &NeonKernel8x8<f32>,
-    buffered: &BufferedKernel8x8,
+fn check_direct_matches_buffered<K: Kernel<Scalar = f32>>(
+    direct: &K,
+    buffered: &BufferedKernel<K>,
     m: usize,
     k: usize,
     n: usize,
@@ -254,13 +252,30 @@ fn test_neon8x8_direct_matches_buffered() {
         println!("neon feature is not supported");
         return;
     };
-    let buffered = BufferedKernel8x8(direct);
+    direct_matches_buffered(direct);
+}
+
+#[test]
+fn test_neon4x4_direct_matches_buffered() {
+    if !cfg!(target_feature = "neon") {
+        return;
+    }
+    // SAFETY: NEON is enabled for this target.
+    direct_matches_buffered(unsafe { NeonKernel4x4::<f32>::new() });
+}
+
+fn direct_matches_buffered<K: Kernel<Scalar = f32> + Copy>(direct: K) {
+    let buffered = BufferedKernel(direct);
+    let d = K::MR;
 
     // `MatRef::row_major` rejects a zero dimension, so k = 0 is not representable.
     let (dims, ks): (&[usize], &[usize]) = if cfg!(miri) {
-        (&[8, 9], &[1, 7])
+        (&[d, d + 1], &[1, 7])
     } else {
-        (&[1, 7, 8, 9, 16, 17, 24], &[1, 2, 7, 64])
+        (
+            &[1, d - 1, d, d + 1, 2 * d, 2 * d + 1, 3 * d],
+            &[1, 2, 7, 64],
+        )
     };
     let layouts: &[CLayout] = if cfg!(miri) {
         &[CLayout::Row, CLayout::Col, CLayout::ColStrided]
@@ -289,9 +304,14 @@ fn test_neon8x8_direct_matches_buffered() {
 
     // and sweep every alpha/beta combination on a few shapes
     let shapes: &[(usize, usize, usize)] = if cfg!(miri) {
-        &[(8, 7, 9)]
+        &[(d, 7, d + 1)]
     } else {
-        &[(8, 7, 8), (16, 7, 17), (24, 2, 9), (17, 64, 24)]
+        &[
+            (d, 7, d),
+            (2 * d, 7, 2 * d + 1),
+            (3 * d, 2, d + 1),
+            (2 * d + 1, 64, 3 * d),
+        ]
     };
     let ab_layouts: &[CLayout] = if cfg!(miri) {
         &[CLayout::Row, CLayout::ColStrided]

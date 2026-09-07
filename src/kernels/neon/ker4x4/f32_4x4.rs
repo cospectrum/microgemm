@@ -1,5 +1,7 @@
 use super::NeonKernel4x4;
-use crate::{kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef};
+use crate::{
+    kernels::dbg_check_microkernel_inputs, typenum::U4, Kernel, MatMut, MatRef, PackSizes,
+};
 
 use super::super::simd::*;
 
@@ -27,6 +29,59 @@ impl Kernel for NeonKernel4x4<f32> {
             dst.as_mut_slice(),
         );
     }
+
+    fn gemm(
+        &self,
+        alpha: f32,
+        a: MatRef<f32>,
+        b: MatRef<f32>,
+        beta: f32,
+        c: &mut MatMut<f32>,
+        pack_sizes: PackSizes,
+        packing_buf: &mut [f32],
+    ) {
+        crate::gemm::gemm_with_tile(
+            self,
+            alpha,
+            a,
+            b,
+            beta,
+            c,
+            pack_sizes,
+            packing_buf,
+            neon_4x4_tile_f32,
+        );
+    }
+}
+
+// Per-tile operation for the 4x4 f32 kernel: write a full in-bounds tile straight into c,
+// fall back to the buffered path otherwise.
+#[allow(clippy::too_many_arguments)]
+fn neon_4x4_tile_f32(
+    kernel: &NeonKernel4x4<f32>,
+    alpha: f32,
+    lhs_values: &[f32],
+    rhs_values: &[f32],
+    kc: usize,
+    beta: f32,
+    c: &mut MatMut<f32>,
+    dst_rows: core::ops::Range<usize>,
+    dst_cols: core::ops::Range<usize>,
+    dst_buf: &mut [f32],
+) {
+    super::super::direct_tile(
+        kernel,
+        alpha,
+        lhs_values,
+        rhs_values,
+        kc,
+        beta,
+        c,
+        dst_rows,
+        dst_cols,
+        dst_buf,
+        kernel_direct,
+    );
 }
 
 fn neon_4x4_microkernel_f32(
@@ -38,11 +93,31 @@ fn neon_4x4_microkernel_f32(
     dst_colmajor: &mut [f32],
 ) {
     const DIM: usize = 4;
-    assert_eq!(lhs.len(), rhs.len());
-    assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
     assert_eq!(dst_colmajor.len(), DIM * DIM);
+    kernel_direct(kc, alpha, rhs, lhs, beta, dst_colmajor, DIM);
+}
 
-    unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst_colmajor) };
+/// `ld` is C's leading dimension, in `f32` elements: the row stride for row-major
+/// C or the column stride for column-major C. The other stride must be 1.
+/// It must be at least 4; a packed 4×4 scratch tile uses 4, while a tile within
+/// a larger matrix retains that matrix's stride, including any padding.
+#[inline]
+fn kernel_direct(kc: usize, alpha: f32, x: &[f32], y: &[f32], beta: f32, c: &mut [f32], ld: usize) {
+    const DIM: usize = 4;
+    let packed_len = DIM.checked_mul(kc).expect("packed panel length overflow");
+    assert_eq!(x.len(), packed_len);
+    assert_eq!(y.len(), packed_len);
+    assert!(ld >= DIM);
+    let tile_len = (DIM - 1)
+        .checked_mul(ld)
+        .and_then(|n| n.checked_add(DIM))
+        .expect("C tile length overflow");
+    assert!(c.len() >= tile_len);
+
+    // SAFETY: panel lengths cover all loads and one-past-the-end increments.
+    // The output span is checked, ld >= DIM keeps columns disjoint, and slices
+    // provide exclusive output access. The constructor guarantees NEON support.
+    unsafe { inner(kc, alpha, y.as_ptr(), x.as_ptr(), beta, c, ld) };
 
     unsafe fn inner(
         kc: usize,
@@ -51,6 +126,7 @@ fn neon_4x4_microkernel_f32(
         mut right: *const f32,
         beta: f32,
         dst: &mut [f32],
+        ld: usize,
     ) {
         let mut cols0 = [vmovq_n_f32(0f32); 4];
         let mut cols1 = [vmovq_n_f32(0f32); 4];
@@ -104,8 +180,8 @@ fn neon_4x4_microkernel_f32(
             cols0[row] = vmulq_n_f32(sum, alpha);
         }
 
-        let it = dst.chunks_exact_mut(4).zip(cols0);
-        for (to, from) in it {
+        for (col, from) in cols0.into_iter().enumerate() {
+            let to = &mut dst[col * ld..col * ld + 4];
             let mut tmp = [0f32; 4];
             vst1q_f32(tmp.as_mut_ptr(), from);
             for (y, x) in to.iter_mut().zip(tmp) {
@@ -124,7 +200,9 @@ fn scale_add(x: f32, beta: f32, y: f32) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::neon_4x4_microkernel_f32;
+    use super::*;
+
+    const DIM: usize = 4;
     use crate::std_prelude::*;
 
     #[test]
@@ -174,6 +252,134 @@ mod tests {
     fn rejects_panel_length_overflow() {
         neon_4x4_microkernel_f32(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16]);
     }
+
+    // The direct path must actually be taken, not merely agree with the buffered one:
+    // it never touches dst_buf, while the fallback fills dst_buf from c.
+    #[test]
+    fn test_tile_takes_direct_path() {
+        let kernel = if cfg!(target_feature = "neon") {
+            unsafe { NeonKernel4x4::<f32>::new() }
+        } else {
+            println!("neon feature is not supported");
+            return;
+        };
+        const SENTINEL: f32 = 123.0;
+        let kc = 3;
+        let lhs = [1.0; 12];
+        let rhs = [2.0; 12];
+
+        // returns true if dst_buf was left untouched, i.e. the direct path ran
+        let run = |rsc: usize, csc: usize| -> bool {
+            let len = (DIM - 1) * rsc + (DIM - 1) * csc + 1;
+            let mut values = vec![1f32; len];
+            let mut c = MatMut::from_parts(DIM, DIM, values.as_mut_slice(), rsc, csc).unwrap();
+            let mut dst_buf = vec![SENTINEL; DIM * DIM];
+            neon_4x4_tile_f32(
+                &kernel,
+                1.0,
+                &lhs,
+                &rhs,
+                kc,
+                1.0,
+                &mut c,
+                0..DIM,
+                0..DIM,
+                &mut dst_buf,
+            );
+            dst_buf.iter().all(|&x| x == SENTINEL)
+        };
+
+        assert!(run(DIM, 1), "row-major c must take the direct path");
+        assert!(run(1, DIM), "col-major c must take the direct path");
+        assert!(!run(1, 2), "aliasing strides must take the buffered path");
+    }
+}
+
+#[cfg(test)]
+mod safety_tests {
+    use super::kernel_direct;
+    use crate::std_prelude::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig {
+            // Miri's isolation intentionally denies filesystem persistence.
+            #[cfg(miri)]
+            failure_persistence: None,
+            ..ProptestConfig::default()
+        })]
+
+        #[test]
+        fn strided_writes_preserve_padding_and_allocation_guards(
+            kc in 0usize..=12,
+            ld in 4usize..=12,
+            offset in 0usize..=3,
+            values in prop::collection::vec(-4i16..=4, 96),
+            alpha in -3i16..=3,
+            beta in -3i16..=3,
+        ) {
+            let x: Vec<f32> = values[..4 * kc].iter().copied().map(f32::from).collect();
+            let y: Vec<f32> = values[48..48 + 4 * kc].iter().copied().map(f32::from).collect();
+            let len = 3 * ld + 4;
+            let mut c = vec![65536.0; offset + len + 3];
+            for row in 0..4 {
+                for col in 0..4 {
+                    c[offset + row * ld + col] = (row + col) as f32;
+                }
+            }
+            let before = c.clone();
+            let (alpha, beta) = (f32::from(alpha), f32::from(beta));
+            kernel_direct(kc, alpha, &x, &y, beta, &mut c[offset..offset + len], ld);
+            for i in 0..c.len() {
+                let expected = if i >= offset && i < offset + len && (i - offset) % ld < 4 {
+                    let (row, col) = ((i - offset) / ld, (i - offset) % ld);
+                    let sum: f32 = (0..kc).map(|k| x[4 * k + row] * y[4 * k + col]).sum();
+                    alpha * sum + beta * before[i]
+                } else {
+                    before[i]
+                };
+                prop_assert_eq!(c[i], expected, "at {} for kc={}, ld={}, offset={}", i, kc, ld, offset);
+            }
+        }
+    }
+
+    #[test]
+    #[should_panic]
+    fn rejects_short_first_panel() {
+        kernel_direct(1, 1.0, &[0.0; 3], &[0.0; 4], 0.0, &mut [0.0; 16], 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "ld >= DIM")]
+    fn rejects_overlapping_destination_lines() {
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 16], 3);
+    }
+
+    #[test]
+    #[should_panic(expected = "packed panel length overflow")]
+    fn rejects_panel_length_overflow() {
+        kernel_direct(usize::MAX / 4 + 1, 1.0, &[], &[], 0.0, &mut [0.0; 16], 4);
+    }
+
+    #[test]
+    #[should_panic(expected = "c.len() >= tile_len")]
+    fn rejects_short_destination_span() {
+        kernel_direct(1, 1.0, &[0.0; 4], &[0.0; 4], 0.0, &mut [0.0; 24], 7);
+    }
+
+    #[test]
+    #[should_panic(expected = "C tile length overflow")]
+    fn rejects_destination_stride_overflow() {
+        kernel_direct(
+            1,
+            1.0,
+            &[0.0; 4],
+            &[0.0; 4],
+            0.0,
+            &mut [0.0; 16],
+            usize::MAX,
+        );
+    }
 }
 
 #[cfg(kani)]
@@ -186,27 +392,29 @@ mod proofs {
     // Each depth has its own proof: constant extents let CBMC simplify pointer
     // bounds before solving. The allocation ends exactly at the panel boundary,
     // so a read beyond a panel cannot hide in unused backing-array capacity.
-    fn memory_case<const LEN: usize>() {
+    fn memory_case<const LEN: usize, const DEST: usize, const LD: usize>() {
         let kc = (LEN - 1) / 4;
         let lhs: [f32; LEN] = kani::any();
         let rhs: [f32; LEN] = kani::any();
-        let mut dst: [f32; 18] = kani::any();
-        let first = dst[0].to_bits();
-        let last = dst[17].to_bits();
-        neon_4x4_microkernel_f32(
+        let mut dst: [f32; DEST] = kani::any();
+        let index: usize = kani::any_where(|&i| i < DEST);
+        let before = dst[index].to_bits();
+        kernel_direct(
             kc,
             kani::any(),
             &lhs[1..],
             &rhs[1..],
             kani::any(),
-            &mut dst[1..17],
+            &mut dst[1..DEST - 1],
+            LD,
         );
-        assert_eq!(dst[0].to_bits(), first);
-        assert_eq!(dst[17].to_bits(), last);
+        if index == 0 || index == DEST - 1 || (index - 1) % LD >= 4 {
+            assert_eq!(dst[index].to_bits(), before);
+        }
     }
 
     macro_rules! memory_proof {
-        ($name:ident, $kc:literal) => {
+        ($name:ident, $kc:literal, $ld:literal) => {
             #[kani::proof]
             #[kani::unwind(5)]
             #[kani::stub(simd_mock::vaddq_f32, arithmetic::add)]
@@ -215,22 +423,26 @@ mod proofs {
             #[kani::stub(simd_mock::vfmaq_f32, arithmetic::fma)]
             #[kani::stub(super::scale_add, arbitrary_scale_add)]
             fn $name() {
-                memory_case::<{ 4 * $kc + 1 }>();
+                memory_case::<{ 4 * $kc + 1 }, { 3 * $ld + 6 }, $ld>();
             }
         };
     }
 
     // Zero depth, two unrolled groups, and every remainder after each group.
-    memory_proof!(memory_depth_0, 0);
-    memory_proof!(memory_depth_1, 1);
-    memory_proof!(memory_depth_2, 2);
-    memory_proof!(memory_depth_3, 3);
-    memory_proof!(memory_depth_4, 4);
-    memory_proof!(memory_depth_5, 5);
-    memory_proof!(memory_depth_6, 6);
-    memory_proof!(memory_depth_7, 7);
-    memory_proof!(memory_depth_8, 8);
-    memory_proof!(memory_depth_9, 9);
+    memory_proof!(memory_depth_0, 0, 4);
+    memory_proof!(memory_depth_1, 1, 4);
+    memory_proof!(memory_depth_2, 2, 4);
+    memory_proof!(memory_depth_3, 3, 4);
+    memory_proof!(memory_depth_4, 4, 4);
+    memory_proof!(memory_depth_5, 5, 4);
+    memory_proof!(memory_depth_6, 6, 4);
+    memory_proof!(memory_depth_7, 7, 4);
+    memory_proof!(memory_depth_8, 8, 4);
+    memory_proof!(memory_depth_9, 9, 4);
+
+    memory_proof!(memory_depth_1_stride_7, 1, 7);
+    memory_proof!(memory_depth_5_stride_7, 5, 7);
+    memory_proof!(memory_depth_9_stride_8, 9, 8);
 
     /// No arithmetic stubs: all sign patterns over {-1, 1}. These operations
     /// are exact in both the scalar mock and real fused NEON arithmetic.
@@ -265,5 +477,132 @@ mod proofs {
     #[allow(dead_code)]
     fn arbitrary_scale_add(_: f32, _: f32, _: f32) -> f32 {
         kani::any()
+    }
+
+    // Compose the memory proofs above with the caller: assert the checked
+    // kernel's preconditions and overapproximate values in its write footprint.
+    // Raw loads/stores are verified separately, never stubbed in memory_case.
+    #[allow(dead_code)]
+    fn checked_kernel_footprint(
+        kc: usize,
+        _: f32,
+        x: &[f32],
+        y: &[f32],
+        _: f32,
+        c: &mut [f32],
+        ld: usize,
+    ) {
+        let packed = 4usize.checked_mul(kc).unwrap();
+        assert_eq!(x.len(), packed);
+        assert_eq!(y.len(), packed);
+        assert!(ld >= 4);
+        let span = 3usize
+            .checked_mul(ld)
+            .and_then(|n| n.checked_add(4))
+            .unwrap();
+        assert!(c.len() >= span);
+        for row in 0..4 {
+            for col in 0..4 {
+                c[row * ld + col] = kani::any();
+            }
+        }
+    }
+
+    /// Exercise the real tile dispatcher in both orientations, at a nonzero tile
+    /// origin and with padding between rows/columns. Arithmetic is abstracted;
+    /// native tests check numerical orientation. Guards and scratch are checked.
+    fn direct_tile_case(kernel: &NeonKernel4x4<f32>, row_major: bool) {
+        let (rs, cs) = if row_major { (12, 1) } else { (1, 12) };
+        let lhs = [1.0, 2.0, 3.0, 4.0];
+        let rhs = [11.0, 12.0, 13.0, 14.0];
+        let mut storage = [4.0; 55];
+        let mut c = MatMut::from_parts(5, 5, &mut storage[1..54], rs, cs).unwrap();
+        let mut scratch = [123.0; 16];
+        neon_4x4_tile_f32(
+            kernel,
+            2.0,
+            &lhs,
+            &rhs,
+            1,
+            -3.0,
+            &mut c,
+            1..5,
+            1..5,
+            &mut scratch,
+        );
+        let index: usize = kani::any_where(|&i| i < storage.len());
+        if index == 0
+            || !(1..=4).contains(&((index - 1) / 12))
+            || !(1..=4).contains(&((index - 1) % 12))
+        {
+            assert_eq!(storage[index], 4.0);
+        }
+        let index = kani::any_where(|&i: &usize| i < 16);
+        assert_eq!(scratch[index], 123.0);
+    }
+
+    /// Both a full tile and a ragged tile must stage C for a layout with neither
+    /// stride equal to one. C packing uses the checked kernel footprint above.
+    fn buffered_tile_case(kernel: &NeonKernel4x4<f32>, dim: usize) {
+        let lhs = [1.0, 2.0, 3.0, 4.0];
+        let rhs = [11.0, 12.0, 13.0, 14.0];
+        let mut storage = [4.0; 65];
+        let mut c = MatMut::from_parts(dim, dim, &mut storage[1..64], 16, 2).unwrap();
+        neon_4x4_tile_f32(
+            kernel,
+            1.0,
+            &lhs,
+            &rhs,
+            1,
+            1.0,
+            &mut c,
+            0..4,
+            0..4,
+            &mut [123.0; 16],
+        );
+        let index: usize = kani::any_where(|&i| i < storage.len());
+        if index == 0
+            || (index - 1) / 16 >= dim
+            || (index - 1) % 16 / 2 >= dim
+            || (index - 1) % 2 != 0
+        {
+            assert_eq!(storage[index], 4.0);
+        }
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn direct_row_major_tile() {
+        // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
+        let kernel = unsafe { NeonKernel4x4::new() };
+        direct_tile_case(&kernel, true);
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn direct_col_major_tile() {
+        // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
+        let kernel = unsafe { NeonKernel4x4::new() };
+        direct_tile_case(&kernel, false);
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn buffered_strided_tile() {
+        // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
+        let kernel = unsafe { NeonKernel4x4::new() };
+        buffered_tile_case(&kernel, 4);
+    }
+
+    #[kani::proof]
+    #[kani::unwind(5)]
+    #[kani::stub(super::kernel_direct, checked_kernel_footprint)]
+    fn buffered_ragged_tile() {
+        // SAFETY: this AArch64 harness uses Kani's scalar NEON model.
+        let kernel = unsafe { NeonKernel4x4::new() };
+        buffered_tile_case(&kernel, 3);
     }
 }
