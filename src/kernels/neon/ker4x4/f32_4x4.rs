@@ -18,14 +18,7 @@ impl Kernel for NeonKernel4x4<f32> {
     ) {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
         let kc = lhs.ncols();
-        neon_4x4_microkernel_f32(
-            kc,
-            alpha,
-            lhs.as_slice(),
-            rhs.as_slice(),
-            beta,
-            dst.as_mut_slice(),
-        );
+        neon_4x4_microkernel_f32(kc, alpha, lhs.as_slice(), rhs.as_slice(), beta, dst);
     }
 }
 
@@ -35,14 +28,18 @@ fn neon_4x4_microkernel_f32(
     lhs: &[f32],
     rhs: &[f32],
     beta: f32,
-    dst_colmajor: &mut [f32],
+    dst: &mut MatMut<f32>,
 ) {
     const DIM: usize = 4;
     assert_eq!(lhs.len(), rhs.len());
     assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
-    assert_eq!(dst_colmajor.len(), DIM * DIM);
+    assert_eq!(dst.nrows(), DIM);
+    assert_eq!(dst.ncols(), DIM);
 
-    unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst_colmajor) };
+    // SAFETY: packed slice lengths cover all input loads. MatMut validates its
+    // storage span, and the dimensions checked above cover every C coordinate
+    // used by inner. Contiguous C accesses span four in-bounds rows.
+    unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst) };
 
     unsafe fn inner(
         kc: usize,
@@ -50,7 +47,7 @@ fn neon_4x4_microkernel_f32(
         mut left: *const f32,
         mut right: *const f32,
         beta: f32,
-        dst: &mut [f32],
+        dst: &mut MatMut<f32>,
     ) {
         let mut cols0 = [vmovq_n_f32(0f32); 4];
         let mut cols1 = [vmovq_n_f32(0f32); 4];
@@ -104,11 +101,11 @@ fn neon_4x4_microkernel_f32(
             cols0[row] = vmulq_n_f32(sum, alpha);
         }
 
-        let it = dst.chunks_exact_mut(4).zip(cols0);
-        for (to, from) in it {
+        for (j, from) in cols0.into_iter().enumerate() {
             let mut tmp = [0f32; 4];
             vst1q_f32(tmp.as_mut_ptr(), from);
-            for (y, x) in to.iter_mut().zip(tmp) {
+            for (i, x) in tmp.into_iter().enumerate() {
+                let y = dst.get_unchecked_mut(i, j);
                 #[cfg(kani)]
                 {
                     const BOUND: f32 = 1e3;
@@ -157,7 +154,14 @@ mod proofs {
         kani::assume(dst.len() >= DIM * DIM);
         let dst = &mut dst[..DIM * DIM];
 
-        neon_4x4_microkernel_f32(kc, alpha, left, right, beta, dst);
+        neon_4x4_microkernel_f32(
+            kc,
+            alpha,
+            left,
+            right,
+            beta,
+            &mut MatMut::col_major(DIM, DIM, dst),
+        );
         Some(())
     }
 }

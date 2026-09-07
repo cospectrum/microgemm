@@ -67,6 +67,15 @@ println!("{:?}", c.as_slice());
 
 ### Custom Kernel Implementation
 
+`microkernel` receives a full `MR` × `NR` destination tile with arbitrary row
+and column strides. The tile may be a view into C, so its backing slice need not
+contain exactly `MR * NR` elements. Access only
+the tile's elements and leave gaps between them untouched.
+
+`gemm` passes complete tiles directly to the microkernel; only edge tiles use a
+column-major scratch buffer. Overlapping elements in C have unspecified numerical
+results.
+
 ```rust
 use microgemm::{typenum::U4, Kernel, MatMut, MatRef};
 
@@ -94,8 +103,7 @@ impl Kernel for CustomKernel {
         assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
 
-        // dst is col-major
-        assert_eq!(dst.row_stride(), 1);
+        // Access dst through its strides, for example with get/get_mut.
         assert_eq!(dst.nrows(), Self::MR);
         assert_eq!(dst.ncols(), Self::NR);
 
@@ -114,11 +122,11 @@ All benchmarks are performed in a `single thread` on square matrices of dimensio
 ####  aarch64 (M1)
 ```notrust
    n  NeonKernel8x8           faer matrixmultiply
- 128         64.6µs        256.3µs         49.5µs
- 256        419.5µs          3.2ms        518.2µs
- 512          2.9ms         16.3ms          2.8ms
-1024           23ms        132.7ms         22.5ms
-2048        185.5ms             1s        182.8ms
+ 128         73.3µs        279.8µs         71.8µs
+ 256        568.4µs          2.4ms        561.7µs
+ 512          4.4ms         20.6ms          4.4ms
+1024         35.7ms        171.6ms           35ms
+2048        286.5ms           1.4s        281.8ms
 ```
 */
 

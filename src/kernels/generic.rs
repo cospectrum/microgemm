@@ -29,15 +29,21 @@ where
     });
 }
 
-fn write_cols_to_colmajor<T, const DIM: usize>(dst: &mut [T], cols: &[T], alpha: T, beta: T)
+fn write_cols<T, const DIM: usize>(dst: &mut crate::MatMut<T>, cols: &[T], alpha: T, beta: T)
 where
     T: Copy + Add<Output = T> + Mul<Output = T>,
 {
-    assert_eq!(dst.len(), DIM * DIM);
-    assert_eq!(cols.len(), dst.len());
-    dst.iter_mut().zip(cols).for_each(|(to, &from)| {
-        *to = alpha * from + beta * *to;
-    });
+    assert_eq!(cols.len(), DIM * DIM);
+    assert_eq!(dst.nrows(), DIM);
+    assert_eq!(dst.ncols(), DIM);
+    for (j, col) in cols.chunks_exact(DIM).enumerate() {
+        for (i, &from) in col.iter().enumerate() {
+            // SAFETY: the dimensions checked above bound every coordinate;
+            // MatMut validates the backing storage span when it is constructed.
+            let to = unsafe { dst.get_unchecked_mut(i, j) };
+            *to = alpha * from + beta * *to;
+        }
+    }
 }
 
 macro_rules! impl_generic_square_kernel {
@@ -71,7 +77,7 @@ macro_rules! impl_generic_square_kernel {
                 const DIM: usize = $dim;
                 let mut cols = [T::zero(); DIM * DIM];
                 loop_micropanels::<_, DIM>(lhs.as_slice(), rhs.as_slice(), &mut cols);
-                write_cols_to_colmajor::<_, DIM>(dst.as_mut_slice(), &cols, alpha, beta);
+                write_cols::<_, DIM>(dst, &cols, alpha, beta);
             }
         }
     };

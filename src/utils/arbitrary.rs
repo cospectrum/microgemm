@@ -107,6 +107,8 @@ where
 enum Layout {
     Rowmajor,
     Colmajor,
+    StridedRowmajor,
+    StridedColmajor,
 }
 
 /// Create a strategy to generate matrices with a given scalar strategy and
@@ -134,7 +136,12 @@ prop_compose! {
 }
 
 fn arb_layout() -> impl Strategy<Value = Layout> {
-    prop_oneof![Just(Layout::Rowmajor), Just(Layout::Colmajor)]
+    prop_oneof![
+        Just(Layout::Rowmajor),
+        Just(Layout::Colmajor),
+        Just(Layout::StridedRowmajor),
+        Just(Layout::StridedColmajor),
+    ]
 }
 
 fn fixed_matrix<T>(
@@ -146,14 +153,16 @@ fn fixed_matrix<T>(
 where
     T: Clone + fmt::Debug,
 {
-    let size = nrows * ncols;
-    let vecs = proptest::collection::vec(strategy, size);
-
-    vecs.prop_map(move |v| match layout {
-        Layout::Rowmajor => Mat::row_major(nrows, ncols, v),
-        Layout::Colmajor => Mat::col_major(nrows, ncols, v),
-    })
-    .boxed()
+    let (rs, cs) = match layout {
+        Layout::Rowmajor => (ncols, 1),
+        Layout::Colmajor => (1, nrows),
+        Layout::StridedRowmajor => (2 * ncols + 3, 2),
+        Layout::StridedColmajor => (3, 3 * nrows + 2),
+    };
+    let size = (nrows - 1) * rs + (ncols - 1) * cs + 1;
+    proptest::collection::vec(strategy, size)
+        .prop_map(move |v| Mat::from_parts(nrows, ncols, v, rs, cs).unwrap())
+        .boxed()
 }
 
 fn dims(nrows: impl Into<SizeRange>, ncols: impl Into<SizeRange>) -> BoxedStrategy<(usize, usize)> {

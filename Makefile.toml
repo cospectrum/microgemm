@@ -7,6 +7,10 @@ command = "cargo"
 args = ["bench"]
 dependencies = ["comparison"]
 
+[tasks.kani]
+command = "cargo"
+args = ["kani", "--fail-fast"]
+
 [tasks.sanitize-neon]
 toolchain = "nightly"
 env = { "RUSTFLAGS" = "-Z sanitizer=address" }
