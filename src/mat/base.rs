@@ -134,6 +134,13 @@ where
     pub fn get(&self, row: usize, col: usize) -> T {
         self.as_slice()[self.idx(row, col)]
     }
+    /// # Safety
+    /// `(row, col)` must be within the matrix dimensions.
+    #[cfg(target_arch = "aarch64")]
+    #[inline]
+    pub(crate) unsafe fn get_unchecked(&self, row: usize, col: usize) -> T {
+        *self.as_slice().get_unchecked(self.idx(row, col))
+    }
     pub(crate) fn get_or(&self, row: usize, col: usize, default: T) -> T {
         if self.in_bounds(row, col) {
             self.get(row, col)
@@ -195,6 +202,13 @@ where
     pub fn get_mut(&mut self, row: usize, col: usize) -> &mut T {
         let idx = self.idx(row, col);
         &mut self.as_mut_slice()[idx]
+    }
+    /// # Safety
+    /// `(row, col)` must be within the matrix dimensions of a valid matrix view.
+    #[inline]
+    pub(crate) unsafe fn get_unchecked_mut(&mut self, row: usize, col: usize) -> &mut T {
+        let idx = self.idx(row, col);
+        self.as_mut_slice().get_unchecked_mut(idx)
     }
 }
 

@@ -19,12 +19,23 @@ impl Kernel for NeonKernel8x8<f32> {
         dbg_check_microkernel_inputs(self, lhs, rhs, dst);
         let kc = lhs.ncols();
         // For row-major C, compute the transposed product with the same loop.
-        let (lhs, rhs, ld) = if dst.row_stride() == 1 {
-            (lhs.as_slice(), rhs.as_slice(), dst.col_stride())
+        let (lhs, rhs, rs, cs) = if dst.col_stride() == 1 {
+            (
+                rhs.as_slice(),
+                lhs.as_slice(),
+                dst.col_stride(),
+                dst.row_stride(),
+            )
         } else {
-            (rhs.as_slice(), lhs.as_slice(), dst.row_stride())
+            (
+                lhs.as_slice(),
+                rhs.as_slice(),
+                dst.row_stride(),
+                dst.col_stride(),
+            )
         };
-        neon_8x8_microkernel_f32(kc, alpha, lhs, rhs, beta, dst.as_mut_slice(), ld);
+        let mut dst = MatMut::from_parts(8, 8, dst.as_mut_slice(), rs, cs).unwrap();
+        neon_8x8_microkernel_f32(kc, alpha, lhs, rhs, beta, &mut dst);
     }
 }
 
@@ -34,28 +45,18 @@ fn neon_8x8_microkernel_f32(
     lhs: &[f32],
     rhs: &[f32],
     beta: f32,
-    dst_colmajor: &mut [f32],
-    ld: usize,
+    dst: &mut MatMut<f32>,
 ) {
     const DIM: usize = 8;
     assert_eq!(lhs.len(), rhs.len());
     assert_eq!(lhs.len(), DIM.checked_mul(kc).unwrap());
-    assert!(ld >= DIM);
-    assert!(dst_colmajor.len() >= (DIM - 1).checked_mul(ld).unwrap().checked_add(DIM).unwrap());
+    assert_eq!(dst.nrows(), DIM);
+    assert_eq!(dst.ncols(), DIM);
 
-    // The checked slice lengths above cover every packed load and strided C access.
-
-    unsafe {
-        inner(
-            kc,
-            alpha,
-            lhs.as_ptr(),
-            rhs.as_ptr(),
-            beta,
-            dst_colmajor.as_mut_ptr(),
-            ld,
-        )
-    };
+    // SAFETY: packed slice lengths cover all input loads. MatMut validates its
+    // storage span, and the dimensions checked above cover every C coordinate
+    // used by inner. Contiguous C accesses span four in-bounds rows.
+    unsafe { inner(kc, alpha, lhs.as_ptr(), rhs.as_ptr(), beta, dst) };
 
     unsafe fn inner(
         kc: usize,
@@ -63,8 +64,7 @@ fn neon_8x8_microkernel_f32(
         a: *const f32,
         b: *const f32,
         beta: f32,
-        c: *mut f32,
-        ld: usize,
+        dst: &mut MatMut<f32>,
     ) {
         let (mut a, mut b) = (b, a);
 
@@ -106,10 +106,38 @@ fn neon_8x8_microkernel_f32(
             ab22[i] = vmulq_n_f32(ab22[i], alpha);
         }
 
-        macro_rules! c {
-            ($i:expr, $j:expr) => {
-                c.add(ld * $i + $j)
-            };
+        // Contiguous columns use vector accesses; other layouts use getters.
+        macro_rules! load_c {
+            ($col:expr, $row:expr) => {{
+                let (i, j) = ($row, $col);
+                if dst.row_stride() == 1 {
+                    let at = dst.idx(i, j);
+                    vld1q_f32(dst.as_ptr().add(at))
+                } else {
+                    let values = [
+                        dst.get_unchecked(i, j),
+                        dst.get_unchecked(i + 1, j),
+                        dst.get_unchecked(i + 2, j),
+                        dst.get_unchecked(i + 3, j),
+                    ];
+                    vld1q_f32(values.as_ptr())
+                }
+            }};
+        }
+        macro_rules! store_c {
+            ($col:expr, $row:expr, $value:expr) => {{
+                let (i, j) = ($row, $col);
+                if dst.row_stride() == 1 {
+                    let at = dst.idx(i, j);
+                    vst1q_f32(dst.as_mut_ptr().add(at), $value);
+                } else {
+                    let mut values = [0.0; 4];
+                    vst1q_f32(values.as_mut_ptr(), $value);
+                    for (r, value) in values.into_iter().enumerate() {
+                        *dst.get_unchecked_mut(i + r, j) = value;
+                    }
+                }
+            }};
         }
 
         let mut c11 = [vmovq_n_f32(0f32); 4];
@@ -117,10 +145,10 @@ fn neon_8x8_microkernel_f32(
         let mut c21 = [vmovq_n_f32(0f32); 4];
         let mut c22 = [vmovq_n_f32(0f32); 4];
         for i in 0..4 {
-            c11[i] = vld1q_f32(c![i, 0]);
-            c12[i] = vld1q_f32(c![i, 4]);
-            c21[i] = vld1q_f32(c![i + 4, 0]);
-            c22[i] = vld1q_f32(c![i + 4, 4]);
+            c11[i] = load_c!(i, 0);
+            c12[i] = load_c!(i, 4);
+            c21[i] = load_c!(i + 4, 0);
+            c22[i] = load_c!(i + 4, 4);
         }
 
         let betav = vmovq_n_f32(beta);
@@ -131,10 +159,10 @@ fn neon_8x8_microkernel_f32(
             ab22[i] = vfmaq_f32(ab22[i], c22[i], betav);
         }
         for i in 0..4 {
-            vst1q_f32(c![i, 0], ab11[i]);
-            vst1q_f32(c![i, 4], ab12[i]);
-            vst1q_f32(c![i + 4, 0], ab21[i]);
-            vst1q_f32(c![i + 4, 4], ab22[i]);
+            store_c!(i, 0, ab11[i]);
+            store_c!(i, 4, ab12[i]);
+            store_c!(i + 4, 0, ab21[i]);
+            store_c!(i + 4, 4, ab22[i]);
         }
     }
 }

@@ -34,9 +34,13 @@ where
     T: Copy + Add<Output = T> + Mul<Output = T>,
 {
     assert_eq!(cols.len(), DIM * DIM);
+    assert_eq!(dst.nrows(), DIM);
+    assert_eq!(dst.ncols(), DIM);
     for (j, col) in cols.chunks_exact(DIM).enumerate() {
         for (i, &from) in col.iter().enumerate() {
-            let to = dst.get_mut(i, j);
+            // SAFETY: the dimensions checked above bound every coordinate;
+            // MatMut validates the backing storage span when it is constructed.
+            let to = unsafe { dst.get_unchecked_mut(i, j) };
             *to = alpha * from + beta * *to;
         }
     }

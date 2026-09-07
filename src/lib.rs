@@ -67,9 +67,14 @@ println!("{:?}", c.as_slice());
 
 ### Custom Kernel Implementation
 
-`microkernel` receives a full `MR` × `NR` destination tile with nonoverlapping
-elements and at least one unit stride. The tile may be a view into C, so its
-backing slice need not contain exactly `MR * NR` elements.
+`microkernel` receives a full `MR` × `NR` destination tile with arbitrary row
+and column strides. The tile may be a view into C, so its backing slice need not
+contain exactly `MR * NR` elements. Access only
+the tile's elements and leave gaps between them untouched.
+
+`gemm` passes complete tiles directly to the microkernel; only edge tiles use a
+column-major scratch buffer. Overlapping elements in C have unspecified numerical
+results.
 
 ```rust
 use microgemm::{typenum::U4, Kernel, MatMut, MatRef};
@@ -98,7 +103,7 @@ impl Kernel for CustomKernel {
         assert_eq!(rhs.col_stride(), 1);
         assert_eq!(rhs.ncols(), Self::NR);
 
-        assert!(dst.row_stride() == 1 || dst.col_stride() == 1);
+        // Access dst through its strides, for example with get/get_mut.
         assert_eq!(dst.nrows(), Self::MR);
         assert_eq!(dst.ncols(), Self::NR);
 

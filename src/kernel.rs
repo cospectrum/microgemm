@@ -21,8 +21,8 @@ where
     const NR: usize = Self::Nr::USIZE;
 
     /// Computes a full tile with packed column-major `lhs` and row-major `rhs`.
-    /// `dst` has a unit row or column stride and nonoverlapping elements;
-    /// implementations must respect its strides and leave padding untouched.
+    /// `dst` has arbitrary row and column strides; respect them and leave gaps untouched.
+    /// Overlapping output coordinates have unspecified numerical results.
     fn microkernel(
         &self,
         alpha: Self::Scalar,
@@ -32,6 +32,8 @@ where
         dst: &mut MatMut<Self::Scalar>,
     );
 
+    /// Computes `c = alpha * a * b + beta * c`.
+    /// Overlapping elements in `c` have unspecified numerical results.
     #[inline]
     #[allow(clippy::too_many_arguments)]
     fn gemm(

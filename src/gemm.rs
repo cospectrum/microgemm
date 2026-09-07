@@ -47,7 +47,6 @@ pub(crate) fn gemm_with_kernel<T, K>(
     assert_eq!(nc % nr, 0);
 
     let (rsc, csc) = (c.row_stride(), c.col_stride());
-    let direct_c = (rsc == 1 && csc >= mr) || (csc == 1 && rsc >= nr);
 
     let zero = Zero::zero();
     let mut dst_buf = GenericArray::<T, Product<K::Mr, K::Nr>>::generate(|_| zero);
@@ -90,8 +89,8 @@ pub(crate) fn gemm_with_kernel<T, K>(
                         let lhs = MatRef::col_major(mr, kc, lhs_values);
 
                         let dst_rows = ic + ir..ic + ir + mr;
-                        // Only complete, nonoverlapping tiles can bypass C packing.
-                        if direct_c && dst_rows.end <= m && dst_cols.end <= n {
+                        // Complete tiles can bypass C packing.
+                        if dst_rows.end <= m && dst_cols.end <= n {
                             let at = c.idx(dst_rows.start, dst_cols.start);
                             let mut dst =
                                 MatMut::from_parts(mr, nr, &mut c.as_mut_slice()[at..], rsc, csc)
@@ -145,7 +144,6 @@ mod tests {
             assert_eq!(rhs.col_stride(), 1);
             assert_eq!(rhs.ncols(), Self::NR);
 
-            assert!(dst.row_stride() == 1 || dst.col_stride() == 1);
             assert_eq!(dst.nrows(), Self::MR);
             assert_eq!(dst.ncols(), Self::NR);
             naive_gemm(alpha, lhs, rhs, beta, dst);
