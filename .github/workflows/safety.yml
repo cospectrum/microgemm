@@ -89,7 +89,6 @@ jobs:
   kani_discover:
     name: List Kani proofs (no verification)
     # Compiles harness metadata to build the matrix; does not verify any proof.
-    needs: [sanitize_x86_64, miri]
     # ARM64 keeps the architecture-gated NEON proofs in discovery.
     runs-on: ubuntu-24.04-arm
     outputs:
