@@ -79,6 +79,7 @@ jobs:
           MIRIFLAGS: ""
   kani_discover:
     name: Discover Kani proofs
+    needs: [sanitize_x86_64, miri]
     # ARM64 keeps the architecture-gated NEON proofs in discovery.
     runs-on: ubuntu-24.04-arm
     outputs:
@@ -120,6 +121,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
+      max-parallel: 5
       matrix:
         # Use the compiler's harness list so new and renamed proofs run automatically.
         harness: ${{ fromJSON(needs.kani_discover.outputs.harnesses) }}
